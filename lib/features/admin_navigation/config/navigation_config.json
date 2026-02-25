@@ -1,0 +1,332 @@
+{
+  "navigationItems": [
+    {
+      "id": "home",
+      "label": "Home",
+      "icon": "home",
+      "page": "home",
+      "route": "/admin/home",
+      "isVisible": true,
+      "children": []
+    },
+    {
+      "id": "salon",
+      "label": "Salon",
+      "icon": "business",
+      "page": "salon",
+      "route": "/admin/salon",
+      "isVisible": true,
+      "children": [
+        {
+          "id": "salon_overview",
+          "label": "Meine Salons",
+          "icon": "store",
+          "page": "salonOverview",
+          "route": "/admin/salon/overview",
+          "isVisible": true
+        },
+        {
+          "id": "salon_employees",
+          "label": "Mitarbeiter",
+          "icon": "people",
+          "page": "salonEmployees",
+          "route": "/admin/salon/employees",
+          "isVisible": true,
+          "requiredPermission": "employees:manage"
+        },
+        {
+          "id": "salon_customers",
+          "label": "Kunden",
+          "icon": "person",
+          "page": "salonCustomers",
+          "route": "/admin/salon/customers",
+          "isVisible": true,
+          "requiredPermission": "customers:view"
+        },
+        {
+          "id": "salon_pos",
+          "label": "Kasse",
+          "icon": "point_of_sale",
+          "page": "salonPos",
+          "route": "/admin/salon/pos",
+          "isVisible": true,
+          "requiredPermission": "pos:access"
+        },
+        {
+          "id": "salon_inventory",
+          "label": "Lager",
+          "icon": "inventory",
+          "page": "salonInventory",
+          "route": "/admin/salon/inventory",
+          "isVisible": true,
+          "requiredPermission": "inventory:manage"
+        },
+        {
+          "id": "salon_suppliers",
+          "label": "Lieferanten",
+          "icon": "local_shipping",
+          "page": "salonSuppliers",
+          "route": "/admin/salon/suppliers",
+          "isVisible": true,
+          "requiredPermission": "suppliers:manage"
+        },
+        {
+          "id": "salon_consumption",
+          "label": "Verbrauch",
+          "icon": "water_drop",
+          "page": "salonConsumption",
+          "route": "/admin/salon/consumption",
+          "isVisible": true,
+          "requiredPermission": "consumption:view"
+        },
+        {
+          "id": "salon_loyalty",
+          "label": "Loyalty",
+          "icon": "card_giftcard",
+          "page": "salonLoyalty",
+          "route": "/admin/salon/loyalty",
+          "isVisible": true,
+          "requiredPermission": "loyalty:manage"
+        },
+        {
+          "id": "salon_coupons",
+          "label": "Coupons",
+          "icon": "local_offer",
+          "page": "salonCoupons",
+          "route": "/admin/salon/coupons",
+          "isVisible": true,
+          "requiredPermission": "coupons:manage"
+        },
+        {
+          "id": "salon_reports",
+          "label": "Berichte",
+          "icon": "assessment",
+          "page": "salonReports",
+          "route": "/admin/salon/reports",
+          "isVisible": true,
+          "requiredPermission": "reports:view"
+        },
+        {
+          "id": "salon_seo",
+          "label": "SEO Dashboard",
+          "icon": "search",
+          "page": "salonSeo",
+          "route": "/admin/salon/seo",
+          "isVisible": true,
+          "requiredPermission": "seo:manage"
+        },
+        {
+          "id": "salon_local_seo",
+          "label": "Lokales SEO",
+          "icon": "location_on",
+          "page": "salonLocalSeo",
+          "route": "/admin/salon/local-seo",
+          "isVisible": true,
+          "requiredPermission": "seo:manage"
+        },
+        {
+          "id": "salon_page_editor",
+          "label": "Seiten Editor",
+          "icon": "edit_note",
+          "page": "salonPageEditor",
+          "route": "/admin/salon/page-editor",
+          "isVisible": true,
+          "requiredPermission": "pages:edit"
+        }
+      ]
+    },
+    {
+      "id": "gallery",
+      "label": "Galerie",
+      "icon": "photo_library",
+      "page": "gallery",
+      "route": "/admin/gallery",
+      "isVisible": true,
+      "children": [
+        {
+          "id": "gallery_inspiration",
+          "label": "Inspiration",
+          "icon": "lightbulb",
+          "page": "galleryInspiration",
+          "route": "/admin/gallery/inspiration",
+          "isVisible": true
+        },
+        {
+          "id": "gallery_portfolio",
+          "label": "Galerie",
+          "icon": "collections",
+          "page": "galleryPortfolio",
+          "route": "/admin/gallery/portfolio",
+          "isVisible": true,
+          "requiredPermission": "gallery:view"
+        },
+        {
+          "id": "gallery_upload",
+          "label": "Upload",
+          "icon": "upload_file",
+          "page": "galleryUpload",
+          "route": "/admin/gallery/upload",
+          "isVisible": true,
+          "requiredPermission": "gallery:upload"
+        }
+      ]
+    },
+    {
+      "id": "appointments",
+      "label": "Termine",
+      "icon": "event",
+      "page": "appointments",
+      "route": "/admin/appointments",
+      "isVisible": true,
+      "children": [
+        {
+          "id": "appointments_calendar",
+          "label": "Kalender",
+          "icon": "calendar_today",
+          "page": "appointmentsCalendar",
+          "route": "/admin/appointments/calendar",
+          "isVisible": true,
+          "requiredPermission": "appointments:view"
+        },
+        {
+          "id": "appointments_schedule",
+          "label": "Zeitplan",
+          "icon": "schedule",
+          "page": "appointmentsSchedule",
+          "route": "/admin/appointments/schedule",
+          "isVisible": true,
+          "requiredPermission": "schedule:manage"
+        },
+        {
+          "id": "appointments_bookings",
+          "label": "Buchungen",
+          "icon": "book_online",
+          "page": "appointmentsBookings",
+          "route": "/admin/appointments/bookings",
+          "isVisible": true,
+          "requiredPermission": "bookings:manage"
+        },
+        {
+          "id": "appointments_map",
+          "label": "Karte",
+          "icon": "map",
+          "page": "appointmentsMap",
+          "route": "/admin/appointments/map",
+          "isVisible": true
+        },
+        {
+          "id": "appointments_closures",
+          "label": "Schließungen",
+          "icon": "event_busy",
+          "page": "appointmentsClosures",
+          "route": "/admin/appointments/closures",
+          "isVisible": true,
+          "requiredPermission": "closures:manage"
+        }
+      ]
+    },
+    {
+      "id": "chats",
+      "label": "Chats",
+      "icon": "chat",
+      "page": "chats",
+      "route": "/admin/chats",
+      "isVisible": true,
+      "children": [
+        {
+          "id": "chats_team",
+          "label": "Team Chat",
+          "icon": "groups",
+          "page": "chatsTeam",
+          "route": "/admin/chats/team",
+          "isVisible": true,
+          "requiredPermission": "chat:team"
+        },
+        {
+          "id": "chats_support",
+          "label": "Support",
+          "icon": "support_agent",
+          "page": "chatsSupport",
+          "route": "/admin/chats/support",
+          "isVisible": true,
+          "requiredPermission": "chat:support"
+        },
+        {
+          "id": "chats_announcements",
+          "label": "Ankündigungen",
+          "icon": "campaign",
+          "page": "chatsAnnouncements",
+          "route": "/admin/chats/announcements",
+          "isVisible": true,
+          "requiredPermission": "chat:announce"
+        }
+      ]
+    },
+    {
+      "id": "profile",
+      "label": "Profil",
+      "icon": "account_circle",
+      "page": "profile",
+      "route": "/admin/profile",
+      "isVisible": true,
+      "children": [
+        {
+          "id": "profile_account",
+          "label": "Mein Profil",
+          "icon": "person",
+          "page": "profileAccount",
+          "route": "/admin/profile/account",
+          "isVisible": true
+        },
+        {
+          "id": "profile_security",
+          "label": "Sicherheit",
+          "icon": "security",
+          "page": "profileSecurity",
+          "route": "/admin/profile/security",
+          "isVisible": true
+        },
+        {
+          "id": "profile_notifications",
+          "label": "Benachrichtigungen",
+          "icon": "notifications",
+          "page": "profileNotifications",
+          "route": "/admin/profile/notifications",
+          "isVisible": true
+        },
+        {
+          "id": "profile_preferences",
+          "label": "Voreinstellungen",
+          "icon": "tune",
+          "page": "profilePreferences",
+          "route": "/admin/profile/preferences",
+          "isVisible": true
+        },
+        {
+          "id": "profile_payments",
+          "label": "Zahlungsmethoden",
+          "icon": "payment",
+          "page": "profilePayments",
+          "route": "/admin/profile/payments",
+          "isVisible": true
+        },
+        {
+          "id": "profile_subscription",
+          "label": "Abo & Lizenz",
+          "icon": "card_membership",
+          "page": "profileSubscription",
+          "route": "/admin/profile/subscription",
+          "isVisible": true
+        },
+        {
+          "id": "profile_settings",
+          "label": "Erweiterte Einstellungen",
+          "icon": "settings",
+          "page": "profileSettings",
+          "route": "/admin/profile/settings",
+          "isVisible": true
+        }
+      ]
+    }
+  ]
+}

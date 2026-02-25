@@ -1,0 +1,394 @@
+// coverage:ignore-file
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint
+// ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
+
+part of 'profile_model.dart';
+
+// **************************************************************************
+// FreezedGenerator
+// **************************************************************************
+
+T _$identity<T>(T value) => value;
+
+final _privateConstructorUsedError = UnsupportedError(
+  'It seems like you constructed your class using `MyClass._()`. This constructor is only meant to be used by freezed and you are not supposed to need it nor use it.\nPlease check the documentation here for more information: https://github.com/rrousselGit/freezed#adding-getters-and-methods-to-our-models',
+);
+
+Profile _$ProfileFromJson(Map<String, dynamic> json) {
+  return _Profile.fromJson(json);
+}
+
+/// @nodoc
+mixin _$Profile {
+  String get userId => throw _privateConstructorUsedError;
+  String? get firstName => throw _privateConstructorUsedError;
+  String? get lastName => throw _privateConstructorUsedError;
+  String? get phone => throw _privateConstructorUsedError;
+  String? get street => throw _privateConstructorUsedError;
+  String? get houseNumber => throw _privateConstructorUsedError;
+  String? get postalCode => throw _privateConstructorUsedError;
+  String? get city => throw _privateConstructorUsedError;
+  String? get avatarUrl => throw _privateConstructorUsedError;
+  DateTime? get createdAt => throw _privateConstructorUsedError;
+  DateTime? get updatedAt => throw _privateConstructorUsedError;
+
+  /// Serializes this Profile to a JSON map.
+  Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
+
+  /// Create a copy of Profile
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  $ProfileCopyWith<Profile> get copyWith => throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class $ProfileCopyWith<$Res> {
+  factory $ProfileCopyWith(Profile value, $Res Function(Profile) then) =
+      _$ProfileCopyWithImpl<$Res, Profile>;
+  @useResult
+  $Res call({
+    String userId,
+    String? firstName,
+    String? lastName,
+    String? phone,
+    String? street,
+    String? houseNumber,
+    String? postalCode,
+    String? city,
+    String? avatarUrl,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  });
+}
+
+/// @nodoc
+class _$ProfileCopyWithImpl<$Res, $Val extends Profile>
+    implements $ProfileCopyWith<$Res> {
+  _$ProfileCopyWithImpl(this._value, this._then);
+
+  // ignore: unused_field
+  final $Val _value;
+  // ignore: unused_field
+  final $Res Function($Val) _then;
+
+  /// Create a copy of Profile
+  /// with the given fields replaced by the non-null parameter values.
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? userId = null,
+    Object? firstName = freezed,
+    Object? lastName = freezed,
+    Object? phone = freezed,
+    Object? street = freezed,
+    Object? houseNumber = freezed,
+    Object? postalCode = freezed,
+    Object? city = freezed,
+    Object? avatarUrl = freezed,
+    Object? createdAt = freezed,
+    Object? updatedAt = freezed,
+  }) {
+    return _then(
+      _value.copyWith(
+            userId: null == userId
+                ? _value.userId
+                : userId // ignore: cast_nullable_to_non_nullable
+                      as String,
+            firstName: freezed == firstName
+                ? _value.firstName
+                : firstName // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            lastName: freezed == lastName
+                ? _value.lastName
+                : lastName // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            phone: freezed == phone
+                ? _value.phone
+                : phone // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            street: freezed == street
+                ? _value.street
+                : street // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            houseNumber: freezed == houseNumber
+                ? _value.houseNumber
+                : houseNumber // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            postalCode: freezed == postalCode
+                ? _value.postalCode
+                : postalCode // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            city: freezed == city
+                ? _value.city
+                : city // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            avatarUrl: freezed == avatarUrl
+                ? _value.avatarUrl
+                : avatarUrl // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            createdAt: freezed == createdAt
+                ? _value.createdAt
+                : createdAt // ignore: cast_nullable_to_non_nullable
+                      as DateTime?,
+            updatedAt: freezed == updatedAt
+                ? _value.updatedAt
+                : updatedAt // ignore: cast_nullable_to_non_nullable
+                      as DateTime?,
+          )
+          as $Val,
+    );
+  }
+}
+
+/// @nodoc
+abstract class _$$ProfileImplCopyWith<$Res> implements $ProfileCopyWith<$Res> {
+  factory _$$ProfileImplCopyWith(
+    _$ProfileImpl value,
+    $Res Function(_$ProfileImpl) then,
+  ) = __$$ProfileImplCopyWithImpl<$Res>;
+  @override
+  @useResult
+  $Res call({
+    String userId,
+    String? firstName,
+    String? lastName,
+    String? phone,
+    String? street,
+    String? houseNumber,
+    String? postalCode,
+    String? city,
+    String? avatarUrl,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  });
+}
+
+/// @nodoc
+class __$$ProfileImplCopyWithImpl<$Res>
+    extends _$ProfileCopyWithImpl<$Res, _$ProfileImpl>
+    implements _$$ProfileImplCopyWith<$Res> {
+  __$$ProfileImplCopyWithImpl(
+    _$ProfileImpl _value,
+    $Res Function(_$ProfileImpl) _then,
+  ) : super(_value, _then);
+
+  /// Create a copy of Profile
+  /// with the given fields replaced by the non-null parameter values.
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? userId = null,
+    Object? firstName = freezed,
+    Object? lastName = freezed,
+    Object? phone = freezed,
+    Object? street = freezed,
+    Object? houseNumber = freezed,
+    Object? postalCode = freezed,
+    Object? city = freezed,
+    Object? avatarUrl = freezed,
+    Object? createdAt = freezed,
+    Object? updatedAt = freezed,
+  }) {
+    return _then(
+      _$ProfileImpl(
+        userId: null == userId
+            ? _value.userId
+            : userId // ignore: cast_nullable_to_non_nullable
+                  as String,
+        firstName: freezed == firstName
+            ? _value.firstName
+            : firstName // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        lastName: freezed == lastName
+            ? _value.lastName
+            : lastName // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        phone: freezed == phone
+            ? _value.phone
+            : phone // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        street: freezed == street
+            ? _value.street
+            : street // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        houseNumber: freezed == houseNumber
+            ? _value.houseNumber
+            : houseNumber // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        postalCode: freezed == postalCode
+            ? _value.postalCode
+            : postalCode // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        city: freezed == city
+            ? _value.city
+            : city // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        avatarUrl: freezed == avatarUrl
+            ? _value.avatarUrl
+            : avatarUrl // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        createdAt: freezed == createdAt
+            ? _value.createdAt
+            : createdAt // ignore: cast_nullable_to_non_nullable
+                  as DateTime?,
+        updatedAt: freezed == updatedAt
+            ? _value.updatedAt
+            : updatedAt // ignore: cast_nullable_to_non_nullable
+                  as DateTime?,
+      ),
+    );
+  }
+}
+
+/// @nodoc
+@JsonSerializable()
+class _$ProfileImpl implements _Profile {
+  const _$ProfileImpl({
+    required this.userId,
+    this.firstName,
+    this.lastName,
+    this.phone,
+    this.street,
+    this.houseNumber,
+    this.postalCode,
+    this.city,
+    this.avatarUrl,
+    this.createdAt,
+    this.updatedAt,
+  });
+
+  factory _$ProfileImpl.fromJson(Map<String, dynamic> json) =>
+      _$$ProfileImplFromJson(json);
+
+  @override
+  final String userId;
+  @override
+  final String? firstName;
+  @override
+  final String? lastName;
+  @override
+  final String? phone;
+  @override
+  final String? street;
+  @override
+  final String? houseNumber;
+  @override
+  final String? postalCode;
+  @override
+  final String? city;
+  @override
+  final String? avatarUrl;
+  @override
+  final DateTime? createdAt;
+  @override
+  final DateTime? updatedAt;
+
+  @override
+  String toString() {
+    return 'Profile(userId: $userId, firstName: $firstName, lastName: $lastName, phone: $phone, street: $street, houseNumber: $houseNumber, postalCode: $postalCode, city: $city, avatarUrl: $avatarUrl, createdAt: $createdAt, updatedAt: $updatedAt)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$ProfileImpl &&
+            (identical(other.userId, userId) || other.userId == userId) &&
+            (identical(other.firstName, firstName) ||
+                other.firstName == firstName) &&
+            (identical(other.lastName, lastName) ||
+                other.lastName == lastName) &&
+            (identical(other.phone, phone) || other.phone == phone) &&
+            (identical(other.street, street) || other.street == street) &&
+            (identical(other.houseNumber, houseNumber) ||
+                other.houseNumber == houseNumber) &&
+            (identical(other.postalCode, postalCode) ||
+                other.postalCode == postalCode) &&
+            (identical(other.city, city) || other.city == city) &&
+            (identical(other.avatarUrl, avatarUrl) ||
+                other.avatarUrl == avatarUrl) &&
+            (identical(other.createdAt, createdAt) ||
+                other.createdAt == createdAt) &&
+            (identical(other.updatedAt, updatedAt) ||
+                other.updatedAt == updatedAt));
+  }
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  int get hashCode => Object.hash(
+    runtimeType,
+    userId,
+    firstName,
+    lastName,
+    phone,
+    street,
+    houseNumber,
+    postalCode,
+    city,
+    avatarUrl,
+    createdAt,
+    updatedAt,
+  );
+
+  /// Create a copy of Profile
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$ProfileImplCopyWith<_$ProfileImpl> get copyWith =>
+      __$$ProfileImplCopyWithImpl<_$ProfileImpl>(this, _$identity);
+
+  @override
+  Map<String, dynamic> toJson() {
+    return _$$ProfileImplToJson(this);
+  }
+}
+
+abstract class _Profile implements Profile {
+  const factory _Profile({
+    required final String userId,
+    final String? firstName,
+    final String? lastName,
+    final String? phone,
+    final String? street,
+    final String? houseNumber,
+    final String? postalCode,
+    final String? city,
+    final String? avatarUrl,
+    final DateTime? createdAt,
+    final DateTime? updatedAt,
+  }) = _$ProfileImpl;
+
+  factory _Profile.fromJson(Map<String, dynamic> json) = _$ProfileImpl.fromJson;
+
+  @override
+  String get userId;
+  @override
+  String? get firstName;
+  @override
+  String? get lastName;
+  @override
+  String? get phone;
+  @override
+  String? get street;
+  @override
+  String? get houseNumber;
+  @override
+  String? get postalCode;
+  @override
+  String? get city;
+  @override
+  String? get avatarUrl;
+  @override
+  DateTime? get createdAt;
+  @override
+  DateTime? get updatedAt;
+
+  /// Create a copy of Profile
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  _$$ProfileImplCopyWith<_$ProfileImpl> get copyWith =>
+      throw _privateConstructorUsedError;
+}
