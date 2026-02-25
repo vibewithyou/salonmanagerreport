@@ -11,7 +11,7 @@ serve(async (req) => {
   }
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL')!,
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    // SUPABASE_SERVICE_ROLE_KEY removed for security
   );
   const { error } = await supabase.rpc('update_loyalty_account', { customer_profile_id, salon_id, amount });
   if (error) {

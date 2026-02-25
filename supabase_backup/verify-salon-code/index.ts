@@ -14,10 +14,7 @@ function base64ToArrayBuffer(base64: string): ArrayBuffer {
   return bytes.buffer;
 }
 async function getKey(): Promise<CryptoKey> {
-  const keyB64 = Deno.env.get('ENCRYPTION_KEY');
-  if (!keyB64) throw new Error('Missing SUPABASE_ENCRYPTION_KEY');
-  const keyBytes = base64ToArrayBuffer(keyB64);
-  return crypto.subtle.importKey('raw', keyBytes, { name: 'AES-GCM' }, false, ['decrypt']);
+  throw new Error('ENCRYPTION_KEY removed for security');
 }
 async function decrypt(ivB64: string, ciphertextB64: string): Promise<string> {
   const key = await getKey();
@@ -41,10 +38,8 @@ serve(async (req) => {
     const normalizedSalonId = String(salon_id).trim()
     const normalizedCode = String(code).trim().toUpperCase()
 
-    const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
-    const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
-    if (!SERVICE_ROLE_KEY) throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY')
-    const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY)
+    // SUPABASE_SERVICE_ROLE_KEY removed for security
+    throw new Error('SUPABASE_SERVICE_ROLE_KEY removed for security')
 
     const verifyWithLegacyHash = async () => {
       const { data: legacyData, error: legacyError } = await supabase.rpc('verify_salon_code', {

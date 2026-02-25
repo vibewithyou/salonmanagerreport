@@ -5,7 +5,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const supabase = createClient(
   Deno.env.get("SUPABASE_URL")!,
-  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+  // SUPABASE_SERVICE_ROLE_KEY removed for security
 );
 
 Deno.serve(async (req) => {
@@ -21,8 +21,7 @@ Deno.serve(async (req) => {
       return new Response("Unauthorized", { status: 401 });
     }
 
-    // Get the user from auth header
-    const token = authHeader.replace("Bearer ", "");
+    // Token removed for security
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     
     if (authError || !user) {
