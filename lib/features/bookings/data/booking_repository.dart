@@ -313,99 +313,125 @@ class BookingRepository {
     String? employeeId,
   }) async {
     try {
-      final workforceService = WorkforceService(_client);
-
-      // Query appointments for the date
-      final startOfDay = DateTime(date.year, date.month, date.day);
-      final endOfDay = startOfDay.add(const Duration(days: 1));
-
-      var query = _client
-          .from('appointments')
-          .select()
-          .eq('salon_id', salonId)
-          .gte('start_time', startOfDay.toIso8601String())
-          .lt('start_time', endOfDay.toIso8601String());
-
-      if (employeeId != null) {
-        query = query.eq('employee_id', employeeId);
-      }
-
-      final occupiedSlots = await query;
-
-      // Get service duration
-      final service = await _client
-          .from('services')
-          .select('duration_minutes')
-          .eq('id', serviceId)
-          .single();
-
-      final durationMinutes = service['duration_minutes'] as int? ?? 30;
-
-      final openingHours = await workforceService.getSalonOpeningHours(salonId);
-      final dayKey = _dayKeyFromWeekday(date.weekday);
-      final dayHours = openingHours[dayKey];
-      if (dayHours == null || dayHours.closed) {
-        return [];
-      }
-
-      final openMinutes = _parseMinutes(dayHours.open);
-      final closeMinutes = _parseMinutes(dayHours.close);
-      if (openMinutes == null || closeMinutes == null || closeMinutes <= openMinutes) {
-        return [];
-      }
-
-      // Generate available slots (opening hours, 30-minute intervals)
-      final now = DateTime.now();
-      final slots = <TimeSlot>[];
-
-      var current = DateTime(
-        date.year,
-        date.month,
-        date.day,
-        openMinutes ~/ 60,
-        openMinutes % 60,
+      final rpcRows = await _client.rpc(
+        'get_available_slots',
+        params: {
+          'p_salon_id': salonId,
+          'p_service_id': serviceId,
+          'p_target_date':
+              '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}',
+          'p_staff_id': employeeId,
+        },
       );
 
-      final endTime = DateTime(
-        date.year,
-        date.month,
-        date.day,
-        closeMinutes ~/ 60,
-        closeMinutes % 60,
+      return (rpcRows as List<dynamic>)
+          .map((row) => row as Map<String, dynamic>)
+          .map(
+            (row) => TimeSlot(
+              startTime: DateTime.parse(row['start_at'].toString()),
+              endTime: DateTime.parse(row['end_at'].toString()),
+            ),
+          )
+          .toList();
+    } catch (_) {
+      // Fallback to existing client-side calculator until RPC is deployed in all environments.
+      return _getAvailableSlotsFallback(
+        salonId: salonId,
+        serviceId: serviceId,
+        date: date,
+        employeeId: employeeId,
       );
-
-      while (current.add(Duration(minutes: durationMinutes)).isBefore(endTime)) {
-        final slotEnd = current.add(Duration(minutes: durationMinutes));
-
-        // Check if slot is occupied
-        bool isOccupied = (occupiedSlots as List).any((apt) {
-          final aptStart = DateTime.parse(apt['start_time'] as String);
-          final aptEnd = DateTime.parse(apt['end_time'] as String);
-          return current.isBefore(aptEnd) && slotEnd.isAfter(aptStart);
-        });
-
-        final blockReasons = await workforceService.getBookingBlockReasons(
-          salonId: salonId,
-          startTime: current,
-          endTime: slotEnd,
-          employeeId: employeeId,
-        );
-
-        // Only show future slots
-        if (!isOccupied && blockReasons.isEmpty && current.isAfter(now)) {
-          slots.add(TimeSlot(
-            startTime: current,
-            endTime: slotEnd,
-          ));
-        }
-
-        current = current.add(const Duration(minutes: 30));
-      }
-
-      return slots;
-    } catch (e) {
-      throw Exception('Failed to fetch available slots: $e');
     }
+  }
+
+  Future<List<TimeSlot>> _getAvailableSlotsFallback({
+    required String salonId,
+    required String serviceId,
+    required DateTime date,
+    String? employeeId,
+  }) async {
+    final workforceService = WorkforceService(_client);
+
+    final startOfDay = DateTime(date.year, date.month, date.day);
+    final endOfDay = startOfDay.add(const Duration(days: 1));
+
+    var query = _client
+        .from('appointments')
+        .select()
+        .eq('salon_id', salonId)
+        .gte('start_time', startOfDay.toIso8601String())
+        .lt('start_time', endOfDay.toIso8601String());
+
+    if (employeeId != null) {
+      query = query.eq('employee_id', employeeId);
+    }
+
+    final occupiedSlots = await query;
+
+    final service = await _client
+        .from('services')
+        .select('duration_minutes')
+        .eq('id', serviceId)
+        .single();
+
+    final durationMinutes = service['duration_minutes'] as int? ?? 30;
+
+    final openingHours = await workforceService.getSalonOpeningHours(salonId);
+    final dayKey = _dayKeyFromWeekday(date.weekday);
+    final dayHours = openingHours[dayKey];
+    if (dayHours == null || dayHours.closed) {
+      return [];
+    }
+
+    final openMinutes = _parseMinutes(dayHours.open);
+    final closeMinutes = _parseMinutes(dayHours.close);
+    if (openMinutes == null || closeMinutes == null || closeMinutes <= openMinutes) {
+      return [];
+    }
+
+    final now = DateTime.now();
+    final slots = <TimeSlot>[];
+
+    var current = DateTime(
+      date.year,
+      date.month,
+      date.day,
+      openMinutes ~/ 60,
+      openMinutes % 60,
+    );
+
+    final endTime = DateTime(
+      date.year,
+      date.month,
+      date.day,
+      closeMinutes ~/ 60,
+      closeMinutes % 60,
+    );
+
+    while (current.add(Duration(minutes: durationMinutes)).isBefore(endTime)) {
+      final slotEnd = current.add(Duration(minutes: durationMinutes));
+
+      final isOccupied = (occupiedSlots as List).any((apt) {
+        final aptStart = DateTime.parse(apt['start_time'] as String);
+        final aptEnd = DateTime.parse(apt['end_time'] as String);
+        return current.isBefore(aptEnd) && slotEnd.isAfter(aptStart);
+      });
+
+      final blockReasons = await workforceService.getBookingBlockReasons(
+        salonId: salonId,
+        startTime: current,
+        endTime: slotEnd,
+        employeeId: employeeId,
+      );
+
+      if (!isOccupied && blockReasons.isEmpty && current.isAfter(now)) {
+        slots.add(TimeSlot(startTime: current, endTime: slotEnd));
+      }
+
+      current = current.add(const Duration(minutes: 30));
+    }
+
+    return slots;
   }
 
   Future<void> _ensureBookingAllowed({
