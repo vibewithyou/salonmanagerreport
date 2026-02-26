@@ -11,7 +11,10 @@ import 'package:table_calendar/table_calendar.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../time_tracking/application/providers/time_tracking_providers.dart';
 import '../../time_tracking/domain/time_entry.dart';
-import 'employee_workforce_tabs.dart';
+import '../../leave_requests/presentation/employee_leave_requests_tab.dart';
+import '../../shifts/presentation/employee_schedule_tab.dart';
+import '../application/providers/employee_appointments_providers.dart';
+import '../domain/employee_appointment.dart';
 
 /// PHASE 3: EMPLOYEE DASHBOARD VOLLSTÄNDIG
 ///
@@ -88,8 +91,8 @@ class _EmployeeDashboardScreenState
           _MyAppointmentsTab(),
           _TimeTrackingTab(),
           _QRCheckinTab(),
-          EmployeeLeaveRequestsLiveTab(),
-          EmployeeScheduleLiveTab(),
+          EmployeeLeaveRequestsTab(),
+          EmployeeScheduleTab(),
         ],
       ),
     );
@@ -100,83 +103,80 @@ class _EmployeeDashboardScreenState
 // TAB 1: MEINE TERMINE
 // ============================================================================
 
-class _MyAppointmentsTab extends StatelessWidget {
+class _MyAppointmentsTab extends ConsumerWidget {
   const _MyAppointmentsTab();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final scope = ref.watch(activeTimeTrackingScopeProvider);
+
+    if (scope == null) {
+      return const Center(
+        child: Text('Salon oder Benutzerkontext fehlt.', style: TextStyle(color: Colors.white70)),
+      );
+    }
+
+    final appointmentsAsync = ref.watch(employeeAppointmentsProvider(scope));
+
     return Container(
       color: Colors.black,
-      child: Column(
-        children: [
-          // Header mit Stats
-          Container(
-            margin: const EdgeInsets.all(16),
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  AppColors.gold.withOpacity(0.2),
-                  Colors.amber.withOpacity(0.1),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.gold.withOpacity(0.3)),
-            ),
-            child: Column(
-              children: [
-                Text(
-                  DateFormat('EEEE, d. MMMM yyyy', 'de').format(DateTime.now()),
-                  style: const TextStyle(color: Colors.white70, fontSize: 14),
+      child: appointmentsAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, _) => Center(
+          child: Text('Fehler beim Laden: $error', style: const TextStyle(color: Colors.white70)),
+        ),
+        data: (appointments) {
+          final today = DateTime.now();
+          final todayCount = appointments.where((a) => a.startAt.year == today.year && a.startAt.month == today.month && a.startAt.day == today.day).length;
+          return Column(
+            children: [
+              Container(
+                margin: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      AppColors.gold.withOpacity(0.2),
+                      Colors.amber.withOpacity(0.1),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.gold.withOpacity(0.3)),
                 ),
-                const SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                child: Column(
                   children: [
-                    _buildStatCard('Heute', '0', LucideIcons.calendar),
-                    Container(
-                      height: 40,
-                      width: 1,
-                      color: AppColors.gold.withOpacity(0.3),
+                    Text(
+                      DateFormat('EEEE, d. MMMM yyyy', 'de').format(DateTime.now()),
+                      style: const TextStyle(color: Colors.white70, fontSize: 14),
                     ),
-                    _buildStatCard(
-                      'Diese Woche',
-                      '0',
-                      LucideIcons.calendarRange,
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        _buildStatCard('Heute', '$todayCount', LucideIcons.calendar),
+                        Container(height: 40, width: 1, color: AppColors.gold.withOpacity(0.3)),
+                        _buildStatCard('Gesamt', '${appointments.length}', LucideIcons.calendarRange),
+                        Container(height: 40, width: 1, color: AppColors.gold.withOpacity(0.3)),
+                        _buildStatCard('Bestätigt', '${appointments.where((a) => a.status == 'accepted' || a.status == 'confirmed').length}', LucideIcons.checkCircle),
+                      ],
                     ),
-                    Container(
-                      height: 40,
-                      width: 1,
-                      color: AppColors.gold.withOpacity(0.3),
-                    ),
-                    _buildStatCard('Erledigt', '0', LucideIcons.checkCircle),
                   ],
                 ),
-              ],
-            ),
-          ),
-
-          // Termin-Liste
-          Expanded(
-            child: _appointments.isEmpty
-                ? const Center(
-                    child: Text(
-                      'Keine Termine vorhanden',
-                      style: TextStyle(color: Colors.white54),
-                    ),
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    itemCount: _appointments.length,
-                    itemBuilder: (context, index) {
-                      final appointment = _appointments[index];
-                      return _AppointmentCard(appointment: appointment);
-                    },
-                  ),
-          ),
-        ],
+              ),
+              Expanded(
+                child: appointments.isEmpty
+                    ? const Center(child: Text('Keine Termine vorhanden', style: TextStyle(color: Colors.white54)))
+                    : ListView.builder(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        itemCount: appointments.length,
+                        itemBuilder: (context, index) => _AppointmentCard(appointment: appointments[index]),
+                      ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -204,7 +204,7 @@ class _MyAppointmentsTab extends StatelessWidget {
 }
 
 class _AppointmentCard extends StatelessWidget {
-  final Map<String, dynamic> appointment;
+  final EmployeeAppointment appointment;
 
   const _AppointmentCard({required this.appointment});
 
@@ -233,7 +233,7 @@ class _AppointmentCard extends StatelessWidget {
                 child: Column(
                   children: [
                     Text(
-                      appointment['time'],
+                      DateFormat('HH:mm').format(appointment.startAt.toLocal()),
                       style: const TextStyle(
                         color: AppColors.gold,
                         fontWeight: FontWeight.bold,
@@ -241,7 +241,7 @@ class _AppointmentCard extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      '${appointment['duration']} Min',
+                      '${appointment.endAt.difference(appointment.startAt).inMinutes} Min',
                       style: const TextStyle(
                         color: Colors.white70,
                         fontSize: 10,
@@ -257,7 +257,7 @@ class _AppointmentCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      appointment['customerName'],
+                      appointment.customerName,
                       style: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
@@ -266,7 +266,7 @@ class _AppointmentCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      appointment['service'],
+                      appointment.serviceName,
                       style: const TextStyle(
                         color: Colors.white70,
                         fontSize: 14,
@@ -278,7 +278,7 @@ class _AppointmentCard extends StatelessWidget {
                         Icon(LucideIcons.euro, size: 14, color: AppColors.gold),
                         const SizedBox(width: 4),
                         Text(
-                          '${appointment['price']}',
+                          '${appointment.price ?? 0}',
                           style: const TextStyle(
                             color: AppColors.gold,
                             fontWeight: FontWeight.bold,
@@ -290,7 +290,7 @@ class _AppointmentCard extends StatelessWidget {
                 ),
               ),
               // Status
-              _buildStatusBadge(appointment['status']),
+              _buildStatusBadge(appointment.status),
             ],
           ),
         ),
@@ -331,7 +331,7 @@ class _AppointmentCard extends StatelessWidget {
 
   void _showAppointmentDetails(
     BuildContext context,
-    Map<String, dynamic> appointment,
+    EmployeeAppointment appointment,
   ) {
     showModalBottomSheet(
       context: context,
@@ -369,7 +369,7 @@ class _AppointmentCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        appointment['customerName'],
+                        appointment.customerName,
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 20,
@@ -377,7 +377,7 @@ class _AppointmentCard extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        '${appointment['time']} • ${appointment['duration']} Min',
+                        '${DateFormat('HH:mm').format(appointment.startAt.toLocal())} • ${appointment.endAt.difference(appointment.startAt).inMinutes} Min',
                         style: const TextStyle(color: Colors.white70),
                       ),
                     ],
@@ -395,21 +395,21 @@ class _AppointmentCard extends StatelessWidget {
             _buildDetailRow(
               LucideIcons.scissors,
               'Leistung',
-              appointment['service'],
+              appointment.serviceName,
             ),
             _buildDetailRow(
               LucideIcons.euro,
               'Preis',
-              '€${appointment['price']}',
+              '€${appointment.price ?? 0}',
             ),
-            _buildDetailRow(LucideIcons.phone, 'Telefon', appointment['phone']),
-            _buildDetailRow(LucideIcons.mail, 'E-Mail', appointment['email']),
+            _buildDetailRow(LucideIcons.phone, 'Telefon', '-'),
+            _buildDetailRow(LucideIcons.mail, 'E-Mail', '-'),
 
-            if (appointment['notes'] != null && appointment['notes'].isNotEmpty)
+            if (appointment.notes ?? '' != null && appointment.notes ?? ''.isNotEmpty)
               _buildDetailRow(
                 LucideIcons.messageSquare,
                 'Notizen',
-                appointment['notes'],
+                appointment.notes ?? '',
               ),
 
             const SizedBox(height: 24),
@@ -1956,5 +1956,5 @@ class _ScheduleTabState extends State<_ScheduleTab> {
 // DATA PLACEHOLDERS (empty until backend is connected)
 // ============================================================================
 
-final _appointments = <Map<String, dynamic>>[];
+
 final _leaveRequests = <Map<String, dynamic>>[];
