@@ -26,8 +26,8 @@ class _CRMDashboardScreenState extends ConsumerState<CRMDashboardScreen> {
   String _searchQuery = '';
   String _sortBy = 'Letzter Besuch';
 
-  List<Map<String, dynamic>> get _filteredCustomers {
-    var filtered = _mockCustomers.where((customer) {
+  List<Map<String, dynamic>> _filterAndSortCustomers(List<Map<String, dynamic>> customers) {
+    var filtered = customers.where((customer) {
       // Search filter
       if (_searchQuery.isNotEmpty) {
         final query = _searchQuery.toLowerCase();
@@ -37,7 +37,6 @@ class _CRMDashboardScreenState extends ConsumerState<CRMDashboardScreen> {
           return false;
         }
       }
-
       // Segment filter
       if (_selectedSegment != 'Alle') {
         if (_selectedSegment == 'Neukunden' && customer['segment'] != 'new') return false;
@@ -45,10 +44,8 @@ class _CRMDashboardScreenState extends ConsumerState<CRMDashboardScreen> {
         if (_selectedSegment == 'VIP' && customer['segment'] != 'vip') return false;
         if (_selectedSegment == 'Inaktiv' && customer['segment'] != 'inactive') return false;
       }
-
       return true;
     }).toList();
-
     // Sort
     filtered.sort((a, b) {
       if (_sortBy == 'Letzter Besuch') {
@@ -60,190 +57,145 @@ class _CRMDashboardScreenState extends ConsumerState<CRMDashboardScreen> {
       }
       return 0;
     });
-
     return filtered;
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.black,
-        elevation: 0,
-        title: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [AppColors.gold, Colors.amber.shade600],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-          ),
-          child: const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Text(
-              'CRM & Kundenverwaltung',
-              style: TextStyle(
-                color: Colors.black,
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
+    // Replace mock with provider
+    final salonId = "TODO_GET_SALON_ID"; // Replace with actual salonId from auth/session
+    final customersAsync = ref.watch(customerProfilesProvider(salonId));
+    return customersAsync.when(
+      data: (customers) {
+        final filtered = _filterAndSortCustomers(customers);
+        return Scaffold(
+          backgroundColor: Colors.black,
+          appBar: AppBar(
+            backgroundColor: Colors.black,
+            elevation: 0,
+            // Use provider for detail and bookings
+            final salonId = "TODO_GET_SALON_ID";
+            final customerId = customer['id'];
+            showModalBottomSheet(
+              context: context,
+              backgroundColor: Colors.transparent,
+              isScrollControlled: true,
+              builder: (context) {
+                return Consumer(builder: (context, ref, _) {
+                  final detailAsync = ref.watch(customerDetailProvider({'salonId': salonId, 'customerId': customerId}));
+                  final bookingsAsync = ref.watch(customerBookingsProvider({'salonId': salonId, 'customerId': customerId}));
+                  return detailAsync.when(
+                    data: (detail) {
+                      return Container(
+                        height: MediaQuery.of(context).size.height * 0.85,
+                        decoration: BoxDecoration(
+                          color: Colors.black,
+                          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            children: [
+                              // ...existing code for avatar, name, etc...
+                              Expanded(
+                                child: DefaultTabController(
+                                  length: 4,
+                                  child: Column(
+                                    children: [
+                                      TabBar(
+                                        labelColor: AppColors.gold,
+                                        unselectedLabelColor: Colors.white54,
+                                        indicatorColor: AppColors.gold,
+                                        tabs: const [
+                                          Tab(text: 'Übersicht'),
+                                          Tab(text: 'Historie'),
+                                          Tab(text: 'Loyalty'),
+                                          Tab(text: 'Notizen'),
+                                        ],
+                                      ),
+                                      Expanded(
+                                        child: TabBarView(
+                                          children: [
+                                            _buildOverviewTab(detail ?? {}),
+                                            bookingsAsync.when(
+                                              data: (bookings) => _buildHistoryTab({'visitHistory': bookings}),
+                                              loading: () => const Center(child: CircularProgressIndicator()),
+                                              error: (e, _) => Center(child: Text('Fehler: $e')),
+                                            ),
+                                            _buildLoyaltyTab(detail ?? {}),
+                                            _buildNotesTab(detail ?? {}),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                    loading: () => const Center(child: CircularProgressIndicator()),
+                    error: (e, _) => Center(child: Text('Fehler: $e')),
+                  );
+                });
+              },
+            );
+                      ],
+                    ),
+                    // ...existing code...
+                  ],
+                ),
               ),
-            ),
+              // ...existing code...
+              // Customer List
+              Expanded(
+                child: filtered.isEmpty
+                    ? const Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(LucideIcons.userX, size: 64, color: Colors.white24),
+                            SizedBox(height: 16),
+                            Text(
+                              'Keine Kunden gefunden',
+                              style: TextStyle(color: Colors.white54, fontSize: 16),
+                            ),
+                          ],
+                        ),
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: filtered.length,
+                        itemBuilder: (context, index) {
+                          final customer = filtered[index];
+                          return _buildCustomerCard(customer);
+                        },
+                      ),
+              ),
+            ],
           ),
-        ),
-        actions: [
-          IconButton(
+          floatingActionButton: FloatingActionButton.extended(
             onPressed: () {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
-                  content: Text('Kundendaten exportiert'),
+                  content: Text('Neuer Kunde hinzufügen'),
                   backgroundColor: Colors.green,
                 ),
               );
             },
-            icon: const Icon(LucideIcons.download, color: Colors.white),
-          ),
-          IconButton(
-            onPressed: _showMarketingOptions,
-            icon: const Icon(LucideIcons.mail, color: AppColors.gold),
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          // Stats Header
-          Container(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                // KPI Cards
-                Row(
-                  children: [
-                    Expanded(child: _buildKPICard('Gesamt', '${_mockCustomers.length}', LucideIcons.users, Colors.blue)),
-                    const SizedBox(width: 8),
-                    Expanded(child: _buildKPICard('⌀ Wert', '€${_calculateAverageValue().toStringAsFixed(0)}', LucideIcons.euro, Colors.green)),
-                    const SizedBox(width: 8),
-                    Expanded(child: _buildKPICard('Retention', '${_calculateRetention()}%', LucideIcons.trendingUp, Colors.orange)),
-                    const SizedBox(width: 8),
-                    Expanded(child: _buildKPICard('Churn', '${_calculateChurn()}%', LucideIcons.trendingDown, Colors.red)),
-                  ],
-                ),
-
-                const SizedBox(height: 16),
-
-                // Segment Filters
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      _buildSegmentChip('Alle', _mockCustomers.length),
-                      _buildSegmentChip('Neukunden', _countSegment('new')),
-                      _buildSegmentChip('Stammkunden', _countSegment('regular')),
-                      _buildSegmentChip('VIP', _countSegment('vip')),
-                      _buildSegmentChip('Inaktiv', _countSegment('inactive')),
-                    ],
-                  ),
-                ),
-              ],
+            backgroundColor: AppColors.gold,
+            icon: const Icon(LucideIcons.userPlus, color: Colors.black),
+            label: const Text(
+              'Neu',
+              style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
             ),
           ),
-
-          // Search & Sort Bar
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    onChanged: (value) => setState(() => _searchQuery = value),
-                    style: const TextStyle(color: Colors.white),
-                    decoration: InputDecoration(
-                      hintText: 'Suche nach Name oder E-Mail...',
-                      hintStyle: const TextStyle(color: Colors.white54),
-                      prefixIcon: const Icon(LucideIcons.search, color: Colors.white54),
-                      filled: true,
-                      fillColor: Colors.grey[900],
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                PopupMenuButton<String>(
-                  onSelected: (value) => setState(() => _sortBy = value),
-                  icon: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: AppColors.gold,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(LucideIcons.arrowUpDown, color: Colors.black),
-                  ),
-                  color: Colors.grey[900],
-                  itemBuilder: (context) => [
-                    const PopupMenuItem(
-                      value: 'Letzter Besuch',
-                      child: Text('Letzter Besuch', style: TextStyle(color: Colors.white)),
-                    ),
-                    const PopupMenuItem(
-                      value: 'Umsatz',
-                      child: Text('Umsatz', style: TextStyle(color: Colors.white)),
-                    ),
-                    const PopupMenuItem(
-                      value: 'Name',
-                      child: Text('Name', style: TextStyle(color: Colors.white)),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-
-          // Customer List
-          Expanded(
-            child: _filteredCustomers.isEmpty
-                ? const Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(LucideIcons.userX, size: 64, color: Colors.white24),
-                        SizedBox(height: 16),
-                        Text(
-                          'Keine Kunden gefunden',
-                          style: TextStyle(color: Colors.white54, fontSize: 16),
-                        ),
-                      ],
-                    ),
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: _filteredCustomers.length,
-                    itemBuilder: (context, index) {
-                      final customer = _filteredCustomers[index];
-                      return _buildCustomerCard(customer);
-                    },
-                  ),
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Neuer Kunde hinzufügen'),
-              backgroundColor: Colors.green,
-            ),
-          );
-        },
-        backgroundColor: AppColors.gold,
-        icon: const Icon(LucideIcons.userPlus, color: Colors.black),
-        label: const Text(
-          'Neu',
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
-        ),
-      ),
+        );
+      },
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, _) => Center(child: Text('Fehler: $e')),
     );
   }
 
