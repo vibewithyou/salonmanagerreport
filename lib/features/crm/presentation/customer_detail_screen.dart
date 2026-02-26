@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:easy_localization/easy_localization.dart';
-import '../../customers/data/customer_repository.dart';
+import '../data/customer_profiles_repository.dart';
 import '../data/customer_notes_repository.dart';
 import '../../../services/supabase_service.dart';
 
+
+final customerProfilesRepositoryProvider = Provider<CustomerProfilesRepository>((ref) {
+  final supabaseService = ref.watch(supabaseServiceProvider);
+  return CustomerProfilesRepository(supabaseService.client);
+});
 final customerNotesRepositoryProvider = Provider<CustomerNotesRepository>((ref) {
   final supabaseService = ref.watch(supabaseServiceProvider);
   return CustomerNotesRepository(supabaseService.client);
@@ -39,9 +44,9 @@ class _CustomerDetailScreenState extends ConsumerState<CustomerDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final customerRepo = ref.watch(customerRepositoryProvider);
+    final customerProfilesRepo = ref.watch(customerProfilesRepositoryProvider);
     final notesRepo = ref.watch(customerNotesRepositoryProvider);
-    // TODO: Replace with real providers and state management
+    // Now using real providers for CRM
 
     return Scaffold(
       appBar: AppBar(
@@ -62,7 +67,26 @@ class _CustomerDetailScreenState extends ConsumerState<CustomerDetailScreen> {
               index: _selectedTab,
               children: [
                 // Historie Tab
-                Center(child: Text('Bookings (TODO: echte Daten)')),
+                FutureBuilder<List<Map<String, dynamic>>>(
+                  future: customerProfilesRepo.listCustomerBookings(widget.salonId, widget.customerId),
+                  builder: (context, snapshot) {
+                    if (!snapshot.hasData) return const CircularProgressIndicator();
+                    final bookings = snapshot.data!;
+                    if (bookings.isEmpty) {
+                      return Center(child: Text('Keine Buchungen gefunden'));
+                    }
+                    return ListView.builder(
+                      itemCount: bookings.length,
+                      itemBuilder: (context, i) {
+                        final booking = bookings[i];
+                        return ListTile(
+                          title: Text('Buchung: ' + (booking['service_name'] ?? '')), // adjust field as needed
+                          subtitle: Text('Datum: ' + (booking['created_at'] ?? '')),
+                        );
+                      },
+                    );
+                  },
+                ),
                 // Notizen Tab
                 Column(
                   children: [

@@ -25,6 +25,8 @@ class GuestBookingScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                      // Beispiel-Daten für Demo
+                      final booking = {'status': 'pending', 'customer': 'Anna', 'service': 'Haircut', 'time': '2026-02-27 10:00'};
                     // Icon
                     Icon(
                       LucideIcons.calendar,
@@ -62,6 +64,12 @@ class GuestBookingScreen extends StatelessWidget {
                       ),
                       child: Column(
                         children: [
+                            // Status-Badge
+                            Align(
+                              alignment: Alignment.center,
+                              child: _StatusBadge(status: booking['status']!),
+                            ),
+                            const SizedBox(height: 16),
                           // Steps
                           _buildStep(
                             number: '1',
@@ -69,6 +77,49 @@ class GuestBookingScreen extends StatelessWidget {
                             description: 'Wählen Sie Ihren Wunschsalon',
                             icon: LucideIcons.mapPin,
                           ),
+                          // Status-Badge Widget (wie in BookingRequestsScreen)
+                          class _StatusBadge extends StatelessWidget {
+                            final String status;
+                            const _StatusBadge({required this.status});
+
+                            @override
+                            Widget build(BuildContext context) {
+                              Color color;
+                              switch (status) {
+                                case 'pending':
+                                  color = Colors.amber;
+                                  break;
+                                case 'accepted':
+                                  color = Colors.green;
+                                  break;
+                                case 'declined':
+                                  color = Colors.red;
+                                  break;
+                                case 'cancelled':
+                                  color = Colors.grey;
+                                  break;
+                                case 'completed':
+                                  color = Colors.blue;
+                                  break;
+                                case 'reschedule_proposed':
+                                  color = Colors.orange;
+                                  break;
+                                default:
+                                  color = Colors.grey;
+                              }
+                              return Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: color,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  status,
+                                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                ),
+                              );
+                            }
+                          }
                           const SizedBox(height: 16),
                           _buildStep(
                             number: '2',

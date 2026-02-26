@@ -6,9 +6,13 @@ class EmployeeAppointment {
     required this.endAt,
     required this.status,
     required this.customerName,
+    this.customerPhone,
+    this.customerEmail,
     required this.serviceName,
     this.price,
     this.notes,
+    this.referenceImages,
+    this.services,
   });
 
   final String id;
@@ -17,9 +21,13 @@ class EmployeeAppointment {
   final DateTime endAt;
   final String status;
   final String customerName;
+  final String? customerPhone;
+  final String? customerEmail;
   final String serviceName;
   final num? price;
   final String? notes;
+  final List<String>? referenceImages;
+  final List<String>? services;
 
   factory EmployeeAppointment.fromJson(Map<String, dynamic> json) {
     return EmployeeAppointment(
@@ -29,9 +37,13 @@ class EmployeeAppointment {
       endAt: DateTime.parse((json['end_at'] ?? json['end_time']).toString()),
       status: (json['status'] as String?) ?? 'pending',
       customerName: (json['customer_name'] as String?) ?? 'Kunde',
+      customerPhone: json['customer_phone'] as String?,
+      customerEmail: json['customer_email'] as String?,
       serviceName: (json['service_name'] as String?) ?? 'Service',
       price: json['price'] as num?,
       notes: json['notes'] as String?,
+      referenceImages: (json['reference_images'] as List<dynamic>?)?.map((e) => e as String).toList() ?? [],
+      services: (json['services'] as List<dynamic>?)?.map((e) => e as String).toList() ?? [],
     );
   }
 }

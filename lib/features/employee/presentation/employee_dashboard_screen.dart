@@ -402,14 +402,36 @@ class _AppointmentCard extends StatelessWidget {
               'Preis',
               '€${appointment.price ?? 0}',
             ),
-            _buildDetailRow(LucideIcons.phone, 'Telefon', '-'),
-            _buildDetailRow(LucideIcons.mail, 'E-Mail', '-'),
+            _buildDetailRow(LucideIcons.phone, 'Telefon', appointment.customerPhone ?? '-'),
+            _buildDetailRow(LucideIcons.mail, 'E-Mail', appointment.customerEmail ?? '-'),
 
-            if (appointment.notes ?? '' != null && appointment.notes ?? ''.isNotEmpty)
+            if (appointment.notes != null && appointment.notes!.isNotEmpty)
               _buildDetailRow(
                 LucideIcons.messageSquare,
                 'Notizen',
                 appointment.notes ?? '',
+              ),
+            if (appointment.referenceImages != null && appointment.referenceImages!.isNotEmpty)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 16),
+                  Text('Referenzbilder:', style: TextStyle(color: Colors.white70, fontSize: 14)),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    height: 100,
+                    child: GridView.count(
+                      crossAxisCount: 5,
+                      mainAxisSpacing: 8,
+                      crossAxisSpacing: 8,
+                      shrinkWrap: true,
+                      children: appointment.referenceImages!.take(5).map((url) => ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.network(url, fit: BoxFit.cover),
+                      )).toList(),
+                    ),
+                  ),
+                ],
               ),
 
             const SizedBox(height: 24),

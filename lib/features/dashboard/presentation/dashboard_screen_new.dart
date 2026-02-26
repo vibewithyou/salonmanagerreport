@@ -76,6 +76,22 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   data: (userData) => Text(
                     userData?.fullName ?? 'dashboard.guest'.tr(),
                     style: TextStyle(
+                Builder(
+                  builder: (context) {
+                    final user = ref.watch(currentUserProvider).maybeWhen(data: (u) => u, orElse: () => null);
+                    final roles = user?.roles ?? [];
+                    final salonId = user?.salonId;
+                    if (roles.any((r) => r == 'salon_owner' || r == 'salon_manager') && salonId != null) {
+                      return _SidebarItem(
+                        icon: Icons.beach_access,
+                        title: 'Leave Requests',
+                        selected: _selectedIndex == 6,
+                        onTap: () => _selectPage(6),
+                      );
+                    }
+                    return const SizedBox.shrink();
+                  },
+                ),
                       color: Colors.white.withOpacity(0.9),
                       fontSize: 14,
                     ),
@@ -201,6 +217,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         return const ProfileDashboard();
       case 5:
         return const SettingsDashboard();
+        case 6:
+          final user = ref.watch(currentUserProvider).maybeWhen(data: (u) => u, orElse: () => null);
+          final salonId = user?.salonId;
+          if (salonId != null) {
+            return ManagerLeaveRequestsScreen(salonId: salonId);
+          }
+          return const Center(child: Text('No salon selected'));
       default:
         return const MainDashboard();
     }
