@@ -99,313 +99,214 @@ class _CustomerDetailScreenState extends ConsumerState<CustomerDetailScreen> {
   Widget build(BuildContext context) {
     final customerAsync = ref.watch(customerDetailProvider(widget.customerId));
     final transactionsAsync = ref.watch(customerTransactionsProvider(widget.customerId));
+    // TODO: Replace with real provider for before/after media
+    final beforeAfterMedia = <Map<String, dynamic>>[ // Dummy data
+      {
+        'bookingId': 'B123',
+        'date': '2026-02-21',
+        'before': [
+          'https://via.placeholder.com/120x120?text=Vorher1',
+          'https://via.placeholder.com/120x120?text=Vorher2',
+        ],
+        'after': [
+          'https://via.placeholder.com/120x120?text=Nachher1',
+        ],
+      },
+      {
+        'bookingId': 'B124',
+        'date': '2026-02-22',
+        'before': [
+          'https://via.placeholder.com/120x120?text=Vorher',
+        ],
+        'after': [
+          'https://via.placeholder.com/120x120?text=Nachher',
+        ],
+      },
+    ];
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('customer.details'.tr()),
-        centerTitle: true,
-        elevation: 0,
-        backgroundColor: Colors.transparent,
-        actions: [
-          if (!_isEditing)
-            Padding(
-              padding: const EdgeInsets.only(right: 16),
-              child: Center(
-                child: TextButton.icon(
-                  onPressed: () {
-                    if (customerAsync.valueOrNull != null) {
-                      _populateFields(customerAsync.value!);
-                      setState(() => _isEditing = true);
-                    }
-                  },
-                  icon: const Icon(Icons.edit),
-                  label: Text('common.edit'.tr()),
+    return DefaultTabController(
+      length: 4,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text('customer.details'.tr()),
+          centerTitle: true,
+          elevation: 0,
+          backgroundColor: Colors.transparent,
+          bottom: const TabBar(
+            tabs: [
+              Tab(text: 'Info'),
+              Tab(text: 'Statistik'),
+              Tab(text: 'Transaktionen'),
+              Tab(text: 'Bilder'),
+            ],
+          ),
+          actions: [
+            if (!_isEditing)
+              Padding(
+                padding: const EdgeInsets.only(right: 16),
+                child: Center(
+                  child: TextButton.icon(
+                    onPressed: () {
+                      if (customerAsync.valueOrNull != null) {
+                        _populateFields(customerAsync.value!);
+                        setState(() => _isEditing = true);
+                      }
+                    },
+                    icon: const Icon(Icons.edit),
+                    label: Text('common.edit'.tr()),
+                  ),
+                ),
+              )
+            else
+              Padding(
+                padding: const EdgeInsets.only(right: 16),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextButton(
+                      onPressed: () => setState(() => _isEditing = false),
+                      child: Text('common.cancel'.tr()),
+                    ),
+                    const SizedBox(width: 8),
+                    ElevatedButton(
+                      onPressed: _isLoading ? null : _saveChanges,
+                      child: _isLoading
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : Text('common.save'.tr()),
+                    ),
+                  ],
                 ),
               ),
-            )
-          else
-            Padding(
-              padding: const EdgeInsets.only(right: 16),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
+          ],
+        ),
+        body: TabBarView(
+          children: [
+            // Info Tab
+            customerAsync.when(
+              data: (customer) {
+                if (customer == null) {
+                  return Center(child: Text('customer.not_found'.tr()));
+                }
+                return SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    children: [
+                      // ...existing code...
+                    ],
+                  ),
+                );
+              },
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (err, stack) => Center(child: Text('Error: $err')),
+            ),
+            // Statistik Tab
+            customerAsync.when(
+              data: (customer) {
+                if (customer == null) {
+                  return Center(child: Text('customer.not_found'.tr()));
+                }
+                return SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    children: [
+                      // ...existing code...
+                    ],
+                  ),
+                );
+              },
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (err, stack) => Center(child: Text('Error: $err')),
+            ),
+            // Transaktionen Tab
+            transactionsAsync.when(
+              data: (transactions) {
+                if (transactions.isEmpty) {
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Text('customer.no_transactions'.tr()),
+                    ),
+                  );
+                }
+                return ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: transactions.length,
+                  itemBuilder: (context, index) {
+                    final tx = transactions[index];
+                    return ListTile(
+                      title: Text(tx.description),
+                      subtitle: Text(
+                        DateFormat('dd.MM.yyyy HH:mm')
+                            .format(DateTime.parse(tx.date.toString())),
+                      ),
+                      trailing: Text(
+                        '\$${tx.amount.toStringAsFixed(2)}',
+                        style: AppStyles.titleMedium.copyWith(
+                          color: Colors.green,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (err, stack) => Center(child: Text('Error: $err')),
+            ),
+            // Bilder Tab
+            SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  TextButton(
-                    onPressed: () => setState(() => _isEditing = false),
-                    child: Text('common.cancel'.tr()),
-                  ),
-                  const SizedBox(width: 8),
-                  ElevatedButton(
-                    onPressed: _isLoading ? null : _saveChanges,
-                    child: _isLoading
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : Text('common.save'.tr()),
-                  ),
+                  Text('Bilder nach Buchung', style: AppStyles.headlineSmall),
+                  const SizedBox(height: 16),
+                  ...beforeAfterMedia.map((entry) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Buchung: ${entry['bookingId']} • ${entry['date']}', style: AppStyles.labelSmall),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Text('Vorher:', style: AppStyles.labelSmall),
+                            const SizedBox(width: 8),
+                            ...List<Widget>.from((entry['before'] as List).map((url) => Padding(
+                              padding: const EdgeInsets.only(right: 8),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: Image.network(url, width: 80, height: 80, fit: BoxFit.cover),
+                              ),
+                            ))),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Text('Nachher:', style: AppStyles.labelSmall),
+                            const SizedBox(width: 8),
+                            ...List<Widget>.from((entry['after'] as List).map((url) => Padding(
+                              padding: const EdgeInsets.only(right: 8),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: Image.network(url, width: 80, height: 80, fit: BoxFit.cover),
+                              ),
+                            ))),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
+                      ],
+                    );
+                  }),
                 ],
               ),
             ),
-        ],
-      ),
-      body: customerAsync.when(
-        data: (customer) {
-          if (customer == null) {
-            return Center(
-              child: Text('customer.not_found'.tr()),
-            );
-          }
-
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                // Customer Info Section
-                Container(
-                  decoration: BoxDecoration(gradient: AppTheme.liquidGlass),
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    children: [
-                      Container(
-                        width: 80,
-                        height: 80,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: AppColors.primary.withOpacity(0.2),
-                          border: customer.isVIP == true
-                              ? Border.all(
-                                  color: const Color(0xFFE8A08F),
-                                  width: 3,
-                                )
-                              : null,
-                        ),
-                        child: Center(
-                          child: Text(
-                            '${customer.firstName[0]}${customer.lastName[0]}'
-                                .toUpperCase(),
-                            style: AppStyles.headlineLarge.copyWith(
-                              color: AppColors.primary,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      if (_isEditing)
-                        Column(
-                          children: [
-                            TextField(
-                              controller: _firstNameController,
-                              decoration: InputDecoration(
-                                labelText: 'customer.first_name'.tr(),
-                                border: const OutlineInputBorder(),
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            TextField(
-                              controller: _lastNameController,
-                              decoration: InputDecoration(
-                                labelText: 'customer.last_name'.tr(),
-                                border: const OutlineInputBorder(),
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            TextField(
-                              controller: _emailController,
-                              decoration: InputDecoration(
-                                labelText: 'customer.email'.tr(),
-                                border: const OutlineInputBorder(),
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            TextField(
-                              controller: _phoneController,
-                              decoration: InputDecoration(
-                                labelText: 'customer.phone'.tr(),
-                                border: const OutlineInputBorder(),
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            TextField(
-                              controller: _addressController,
-                              decoration: InputDecoration(
-                                labelText: 'customer.address'.tr(),
-                                border: const OutlineInputBorder(),
-                              ),
-                              maxLines: 2,
-                            ),
-                            const SizedBox(height: 12),
-                            TextField(
-                              controller: _notesController,
-                              decoration: InputDecoration(
-                                labelText: 'customer.notes'.tr(),
-                                border: const OutlineInputBorder(),
-                              ),
-                              maxLines: 2,
-                            ),
-                          ],
-                        )
-                      else
-                        Column(
-                          children: [
-                            Text(
-                              '${customer.firstName} ${customer.lastName}',
-                              style: AppStyles.headlineSmall,
-                            ),
-                            const SizedBox(height: 8),
-                            if (customer.isVIP == true)
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 6,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFE8A08F).withOpacity(0.2),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Text(
-                                  'VIP Member',
-                                  style: AppStyles.labelSmall.copyWith(
-                                    color: const Color(0xFFE8A08F),
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            const SizedBox(height: 16),
-                            _buildInfoRow('📧', customer.email),
-                            const SizedBox(height: 12),
-                            _buildInfoRow('📱', customer.phone),
-                            if (customer.address != null && customer.address!.isNotEmpty)
-                              Column(
-                                children: [
-                                  const SizedBox(height: 12),
-                                  _buildInfoRow('📍', customer.address!),
-                                ],
-                              ),
-                            if (customer.notes != null && customer.notes!.isNotEmpty)
-                              Column(
-                                children: [
-                                  const SizedBox(height: 12),
-                                  _buildInfoRow('📝', customer.notes!),
-                                ],
-                              ),
-                          ],
-                        ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 24),
-                // Statistics Section
-                Container(
-                  decoration: BoxDecoration(gradient: AppTheme.liquidGlass),
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'customer.statistics'.tr(),
-                        style: AppStyles.headlineSmall,
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          _buildStatItem(
-                            'Total Visits',
-                            customer.totalVisits?.toString() ?? '0',
-                            Icons.event,
-                          ),
-                          const SizedBox(width: 12),
-                          _buildStatItem(
-                            'Total Spent',
-                            '\$${customer.totalSpent?.toStringAsFixed(2) ?? '0.00'}',
-                            Icons.attach_money,
-                          ),
-                        ],
-                      ),
-                      if (customer.lastVisit != null)
-                        Column(
-                          children: [
-                            const SizedBox(height: 12),
-                            _buildInfoRow(
-                              '📅',
-                              'customer.last_visit_date'.tr(
-                                args: [
-                                  DateFormat('dd.MM.yyyy')
-                                      .format(customer.lastVisit!)
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 24),
-                // Transaction History
-                Container(
-                  decoration: BoxDecoration(gradient: AppTheme.liquidGlass),
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'customer.transaction_history'.tr(),
-                        style: AppStyles.headlineSmall,
-                      ),
-                      const SizedBox(height: 16),
-                      transactionsAsync.when(
-                        data: (transactions) {
-                          if (transactions.isEmpty) {
-                            return Center(
-                              child: Padding(
-                                padding: const EdgeInsets.all(16),
-                                child: Text('customer.no_transactions'.tr()),
-                              ),
-                            );
-                          }
-                          return ListView.builder(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            itemCount: transactions.length,
-                            itemBuilder: (context, index) {
-                              final tx = transactions[index];
-                              return ListTile(
-                                title: Text(tx.description),
-                                subtitle: Text(
-                                  DateFormat('dd.MM.yyyy HH:mm')
-                                      .format(DateTime.parse(tx.date.toString())),
-                                ),
-                                trailing: Text(
-                                  '\$${tx.amount.toStringAsFixed(2)}',
-                                  style: AppStyles.titleMedium.copyWith(
-                                    color: Colors.green,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              );
-                            },
-                          );
-                        },
-                        loading: () => const Center(
-                          child: CircularProgressIndicator(),
-                        ),
-                        error: (err, stack) => Center(
-                          child: Text('Error: $err'),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 24),
-              ],
-            ),
-          );
-        },
-        loading: () => const Center(
-          child: CircularProgressIndicator(),
-        ),
-        error: (err, stack) => Center(
-          child: Text('Error: $err'),
+          ],
         ),
       ),
     );
