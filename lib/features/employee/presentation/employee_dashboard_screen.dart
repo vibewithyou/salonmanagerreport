@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,7 +9,12 @@ import 'package:lucide_icons/lucide_icons.dart';
 // DISABLED: import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:table_calendar/table_calendar.dart';
 import '../../../core/constants/app_colors.dart';
-import 'employee_workforce_tabs.dart';
+import '../../time_tracking/application/providers/time_tracking_providers.dart';
+import '../../time_tracking/domain/time_entry.dart';
+import '../../leave_requests/presentation/employee_leave_requests_tab.dart';
+import '../../shifts/presentation/employee_schedule_tab.dart';
+import '../application/providers/employee_appointments_providers.dart';
+import '../domain/employee_appointment.dart';
 
 /// PHASE 3: EMPLOYEE DASHBOARD VOLLSTÄNDIG
 ///
@@ -84,8 +91,8 @@ class _EmployeeDashboardScreenState
           _MyAppointmentsTab(),
           _TimeTrackingTab(),
           _QRCheckinTab(),
-          EmployeeLeaveRequestsLiveTab(),
-          EmployeeScheduleLiveTab(),
+          EmployeeLeaveRequestsTab(),
+          EmployeeScheduleTab(),
         ],
       ),
     );
@@ -96,83 +103,80 @@ class _EmployeeDashboardScreenState
 // TAB 1: MEINE TERMINE
 // ============================================================================
 
-class _MyAppointmentsTab extends StatelessWidget {
+class _MyAppointmentsTab extends ConsumerWidget {
   const _MyAppointmentsTab();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final scope = ref.watch(activeTimeTrackingScopeProvider);
+
+    if (scope == null) {
+      return const Center(
+        child: Text('Salon oder Benutzerkontext fehlt.', style: TextStyle(color: Colors.white70)),
+      );
+    }
+
+    final appointmentsAsync = ref.watch(employeeAppointmentsProvider(scope));
+
     return Container(
       color: Colors.black,
-      child: Column(
-        children: [
-          // Header mit Stats
-          Container(
-            margin: const EdgeInsets.all(16),
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  AppColors.gold.withOpacity(0.2),
-                  Colors.amber.withOpacity(0.1),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.gold.withOpacity(0.3)),
-            ),
-            child: Column(
-              children: [
-                Text(
-                  DateFormat('EEEE, d. MMMM yyyy', 'de').format(DateTime.now()),
-                  style: const TextStyle(color: Colors.white70, fontSize: 14),
+      child: appointmentsAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, _) => Center(
+          child: Text('Fehler beim Laden: $error', style: const TextStyle(color: Colors.white70)),
+        ),
+        data: (appointments) {
+          final today = DateTime.now();
+          final todayCount = appointments.where((a) => a.startAt.year == today.year && a.startAt.month == today.month && a.startAt.day == today.day).length;
+          return Column(
+            children: [
+              Container(
+                margin: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      AppColors.gold.withOpacity(0.2),
+                      Colors.amber.withOpacity(0.1),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.gold.withOpacity(0.3)),
                 ),
-                const SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                child: Column(
                   children: [
-                    _buildStatCard('Heute', '0', LucideIcons.calendar),
-                    Container(
-                      height: 40,
-                      width: 1,
-                      color: AppColors.gold.withOpacity(0.3),
+                    Text(
+                      DateFormat('EEEE, d. MMMM yyyy', 'de').format(DateTime.now()),
+                      style: const TextStyle(color: Colors.white70, fontSize: 14),
                     ),
-                    _buildStatCard(
-                      'Diese Woche',
-                      '0',
-                      LucideIcons.calendarRange,
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        _buildStatCard('Heute', '$todayCount', LucideIcons.calendar),
+                        Container(height: 40, width: 1, color: AppColors.gold.withOpacity(0.3)),
+                        _buildStatCard('Gesamt', '${appointments.length}', LucideIcons.calendarRange),
+                        Container(height: 40, width: 1, color: AppColors.gold.withOpacity(0.3)),
+                        _buildStatCard('Bestätigt', '${appointments.where((a) => a.status == 'accepted' || a.status == 'confirmed').length}', LucideIcons.checkCircle),
+                      ],
                     ),
-                    Container(
-                      height: 40,
-                      width: 1,
-                      color: AppColors.gold.withOpacity(0.3),
-                    ),
-                    _buildStatCard('Erledigt', '0', LucideIcons.checkCircle),
                   ],
                 ),
-              ],
-            ),
-          ),
-
-          // Termin-Liste
-          Expanded(
-            child: _appointments.isEmpty
-                ? const Center(
-                    child: Text(
-                      'Keine Termine vorhanden',
-                      style: TextStyle(color: Colors.white54),
-                    ),
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    itemCount: _appointments.length,
-                    itemBuilder: (context, index) {
-                      final appointment = _appointments[index];
-                      return _AppointmentCard(appointment: appointment);
-                    },
-                  ),
-          ),
-        ],
+              ),
+              Expanded(
+                child: appointments.isEmpty
+                    ? const Center(child: Text('Keine Termine vorhanden', style: TextStyle(color: Colors.white54)))
+                    : ListView.builder(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        itemCount: appointments.length,
+                        itemBuilder: (context, index) => _AppointmentCard(appointment: appointments[index]),
+                      ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -200,7 +204,7 @@ class _MyAppointmentsTab extends StatelessWidget {
 }
 
 class _AppointmentCard extends StatelessWidget {
-  final Map<String, dynamic> appointment;
+  final EmployeeAppointment appointment;
 
   const _AppointmentCard({required this.appointment});
 
@@ -229,7 +233,7 @@ class _AppointmentCard extends StatelessWidget {
                 child: Column(
                   children: [
                     Text(
-                      appointment['time'],
+                      DateFormat('HH:mm').format(appointment.startAt.toLocal()),
                       style: const TextStyle(
                         color: AppColors.gold,
                         fontWeight: FontWeight.bold,
@@ -237,7 +241,7 @@ class _AppointmentCard extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      '${appointment['duration']} Min',
+                      '${appointment.endAt.difference(appointment.startAt).inMinutes} Min',
                       style: const TextStyle(
                         color: Colors.white70,
                         fontSize: 10,
@@ -253,7 +257,7 @@ class _AppointmentCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      appointment['customerName'],
+                      appointment.customerName,
                       style: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
@@ -262,7 +266,7 @@ class _AppointmentCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      appointment['service'],
+                      appointment.serviceName,
                       style: const TextStyle(
                         color: Colors.white70,
                         fontSize: 14,
@@ -274,7 +278,7 @@ class _AppointmentCard extends StatelessWidget {
                         Icon(LucideIcons.euro, size: 14, color: AppColors.gold),
                         const SizedBox(width: 4),
                         Text(
-                          '${appointment['price']}',
+                          '${appointment.price ?? 0}',
                           style: const TextStyle(
                             color: AppColors.gold,
                             fontWeight: FontWeight.bold,
@@ -286,7 +290,7 @@ class _AppointmentCard extends StatelessWidget {
                 ),
               ),
               // Status
-              _buildStatusBadge(appointment['status']),
+              _buildStatusBadge(appointment.status),
             ],
           ),
         ),
@@ -327,7 +331,7 @@ class _AppointmentCard extends StatelessWidget {
 
   void _showAppointmentDetails(
     BuildContext context,
-    Map<String, dynamic> appointment,
+    EmployeeAppointment appointment,
   ) {
     showModalBottomSheet(
       context: context,
@@ -365,7 +369,7 @@ class _AppointmentCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        appointment['customerName'],
+                        appointment.customerName,
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 20,
@@ -373,7 +377,7 @@ class _AppointmentCard extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        '${appointment['time']} • ${appointment['duration']} Min',
+                        '${DateFormat('HH:mm').format(appointment.startAt.toLocal())} • ${appointment.endAt.difference(appointment.startAt).inMinutes} Min',
                         style: const TextStyle(color: Colors.white70),
                       ),
                     ],
@@ -391,21 +395,21 @@ class _AppointmentCard extends StatelessWidget {
             _buildDetailRow(
               LucideIcons.scissors,
               'Leistung',
-              appointment['service'],
+              appointment.serviceName,
             ),
             _buildDetailRow(
               LucideIcons.euro,
               'Preis',
-              '€${appointment['price']}',
+              '€${appointment.price ?? 0}',
             ),
-            _buildDetailRow(LucideIcons.phone, 'Telefon', appointment['phone']),
-            _buildDetailRow(LucideIcons.mail, 'E-Mail', appointment['email']),
+            _buildDetailRow(LucideIcons.phone, 'Telefon', '-'),
+            _buildDetailRow(LucideIcons.mail, 'E-Mail', '-'),
 
-            if (appointment['notes'] != null && appointment['notes'].isNotEmpty)
+            if (appointment.notes ?? '' != null && appointment.notes ?? ''.isNotEmpty)
               _buildDetailRow(
                 LucideIcons.messageSquare,
                 'Notizen',
-                appointment['notes'],
+                appointment.notes ?? '',
               ),
 
             const SizedBox(height: 24),
@@ -486,286 +490,217 @@ class _AppointmentCard extends StatelessWidget {
 // TAB 2: ZEITERFASSUNG
 // ============================================================================
 
-class _TimeTrackingTab extends StatefulWidget {
+class _TimeTrackingTab extends ConsumerStatefulWidget {
   const _TimeTrackingTab();
 
   @override
-  State<_TimeTrackingTab> createState() => _TimeTrackingTabState();
+  ConsumerState<_TimeTrackingTab> createState() => _TimeTrackingTabState();
 }
 
-class _TimeTrackingTabState extends State<_TimeTrackingTab> {
-  bool _isTracking = false;
-  DateTime? _startTime;
-  Duration _currentDuration = Duration.zero;
+class _TimeTrackingTabState extends ConsumerState<_TimeTrackingTab> {
+  Timer? _ticker;
+  Duration _liveDuration = Duration.zero;
 
-  void _toggleTracking() {
+  @override
+  void dispose() {
+    _ticker?.cancel();
+    super.dispose();
+  }
+
+  void _setupTicker(TimeEntry? openEntry) {
+    _ticker?.cancel();
+    if (openEntry == null) {
+      if (_liveDuration != Duration.zero) {
+        setState(() => _liveDuration = Duration.zero);
+      }
+      return;
+    }
+
     setState(() {
-      if (_isTracking) {
-        // Stop tracking
-        _isTracking = false;
-        _startTime = null;
-        _currentDuration = Duration.zero;
+      _liveDuration = DateTime.now().difference(openEntry.clockIn);
+    });
+
+    _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _liveDuration = DateTime.now().difference(openEntry.clockIn);
+      });
+    });
+  }
+
+  Future<void> _onToggleTracking(TimeTrackingScope scope, TimeEntry? openEntry) async {
+    final repository = ref.read(timeTrackingRepositoryProvider);
+    try {
+      if (openEntry == null) {
+        await repository.startShift(salonId: scope.salonId, staffId: scope.staffId);
       } else {
-        // Start tracking
-        _isTracking = true;
-        _startTime = DateTime.now();
-        _startTimer();
+        await repository.stopShift(entryId: openEntry.id);
       }
-    });
-  }
-
-  void _startTimer() {
-    if (!_isTracking) return;
-    Future.delayed(const Duration(seconds: 1), () {
-      if (!mounted) return;
-      if (_isTracking && _startTime != null) {
-        setState(() {
-          _currentDuration = DateTime.now().difference(_startTime!);
-        });
-        _startTimer();
+      ref.invalidate(timeEntriesProvider(scope));
+    } catch (error) {
+      if (!mounted) {
+        return;
       }
-    });
-  }
-
-  String _formatDuration(Duration duration) {
-    String twoDigits(int n) => n.toString().padLeft(2, '0');
-    final hours = twoDigits(duration.inHours);
-    final minutes = twoDigits(duration.inMinutes.remainder(60));
-    final seconds = twoDigits(duration.inSeconds.remainder(60));
-    return '$hours:$minutes:$seconds';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Zeiterfassung fehlgeschlagen: $error'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final scope = ref.watch(activeTimeTrackingScopeProvider);
+    if (scope == null) {
+      return const Center(
+        child: Text(
+          'Salon oder Benutzerkontext fehlt.',
+          style: TextStyle(color: Colors.white70),
+        ),
+      );
+    }
+
+    final entriesAsync = ref.watch(timeEntriesProvider(scope));
+    final openEntryAsync = ref.watch(openTimeEntryProvider(scope));
+
+    final openEntry = openEntryAsync.maybeWhen(
+      data: (value) => value,
+      orElse: () => null,
+    );
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _setupTicker(openEntry);
+      }
+    });
+
     return Container(
       color: Colors.black,
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            // Current Timer Card
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    _isTracking
-                        ? Colors.green.withOpacity(0.2)
-                        : AppColors.gold.withOpacity(0.2),
-                    _isTracking
-                        ? Colors.green.withOpacity(0.1)
-                        : Colors.amber.withOpacity(0.1),
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: _isTracking ? Colors.green : AppColors.gold,
-                  width: 2,
-                ),
-              ),
-              child: Column(
-                children: [
-                  Icon(
-                    _isTracking ? LucideIcons.play : LucideIcons.clock,
-                    color: _isTracking ? Colors.green : AppColors.gold,
-                    size: 48,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    _isTracking ? 'Arbeitszeit läuft' : 'Bereit zum starten',
-                    style: const TextStyle(color: Colors.white70, fontSize: 16),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    _formatDuration(_currentDuration),
-                    style: TextStyle(
-                      color: _isTracking ? Colors.green : AppColors.gold,
-                      fontSize: 48,
-                      fontWeight: FontWeight.bold,
-                      fontFeatures: const [FontFeature.tabularFigures()],
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: _toggleTracking,
-                      icon: Icon(
-                        _isTracking ? LucideIcons.square : LucideIcons.play,
-                      ),
-                      label: Text(_isTracking ? 'Stoppen' : 'Starten'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: _isTracking
-                            ? Colors.red
-                            : Colors.green,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        textStyle: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                  if (_isTracking && _startTime != null) ...[
-                    const SizedBox(height: 12),
-                    Text(
-                      'Gestartet um ${DateFormat('HH:mm').format(_startTime!)}',
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 24),
-
-            // Statistics Cards
-            Row(
+      child: entriesAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, _) => Center(
+          child: Text(
+            'Fehler beim Laden: $error',
+            style: const TextStyle(color: Colors.white70),
+          ),
+        ),
+        data: (entries) {
+          final isTracking = openEntry != null;
+          return RefreshIndicator(
+            onRefresh: () async {
+              ref.invalidate(timeEntriesProvider(scope));
+              ref.invalidate(openTimeEntryProvider(scope));
+              await ref.read(timeEntriesProvider(scope).future);
+            },
+            child: ListView(
+              padding: const EdgeInsets.all(16),
               children: [
-                Expanded(
-                  child: _buildStatsCard(
-                    'Heute',
-                    '0:00',
-                    'Stunden',
-                    LucideIcons.calendar,
-                    Colors.blue,
+                Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        AppColors.gold.withOpacity(0.2),
+                        Colors.amber.withOpacity(0.1),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppColors.gold.withOpacity(0.3)),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildStatsCard(
-                    'Diese Woche',
-                    '0:00',
-                    'Stunden',
-                    LucideIcons.calendarRange,
-                    Colors.purple,
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 12),
-
-            Row(
-              children: [
-                Expanded(
-                  child: _buildStatsCard(
-                    'Dieser Monat',
-                    '0:00',
-                    'Stunden',
-                    LucideIcons.calendarDays,
-                    Colors.orange,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildStatsCard(
-                    'Überstunden',
-                    '0:00',
-                    'Stunden',
-                    LucideIcons.trendingUp,
-                    Colors.green,
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 24),
-
-            // Recent Entries
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.grey[900],
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Row(
+                  child: Column(
                     children: [
                       Icon(
-                        LucideIcons.history,
-                        color: AppColors.gold,
-                        size: 20,
+                        isTracking ? LucideIcons.play : LucideIcons.clock,
+                        color: isTracking ? Colors.green : AppColors.gold,
+                        size: 48,
                       ),
-                      SizedBox(width: 8),
+                      const SizedBox(height: 16),
                       Text(
-                        'Letzte Einträge',
+                        isTracking ? 'Aktiv seit ${DateFormat('HH:mm').format(openEntry!.clockIn.toLocal())}' : 'Nicht eingestempelt',
+                        style: const TextStyle(color: Colors.white70, fontSize: 16),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        _formatDuration(isTracking ? _liveDuration : Duration.zero),
                         style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
+                          color: isTracking ? Colors.green : AppColors.gold,
+                          fontSize: 48,
                           fontWeight: FontWeight.bold,
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: openEntryAsync.isLoading ? null : () => _onToggleTracking(scope, openEntry),
+                          icon: Icon(isTracking ? LucideIcons.square : LucideIcons.play),
+                          label: Text(isTracking ? 'Stoppen' : 'Starten'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: isTracking ? Colors.red : Colors.green,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          ),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
-                  if (_timeEntries.isEmpty)
-                    const Text(
-                      'Keine Einträge vorhanden',
-                      style: TextStyle(color: Colors.white54),
-                    )
-                  else
-                    ..._timeEntries.map((entry) => _buildTimeEntry(entry)),
-                ],
-              ),
+                ),
+                const SizedBox(height: 24),
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[900],
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Row(
+                        children: [
+                          Icon(LucideIcons.history, color: AppColors.gold, size: 20),
+                          SizedBox(width: 8),
+                          Text(
+                            'Letzte Einträge (30 Tage)',
+                            style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      if (entries.isEmpty)
+                        const Text('Keine Einträge vorhanden', style: TextStyle(color: Colors.white54))
+                      else
+                        ...entries.map(_buildTimeEntry),
+                    ],
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
 
-  Widget _buildStatsCard(
-    String label,
-    String value,
-    String unit,
-    IconData icon,
-    Color color,
-  ) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.grey[900],
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.3)),
-      ),
-      child: Column(
-        children: [
-          Icon(icon, color: color, size: 28),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: TextStyle(
-              color: color,
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              fontFeatures: const [FontFeature.tabularFigures()],
-            ),
-          ),
-          Text(
-            unit,
-            style: const TextStyle(color: Colors.white70, fontSize: 10),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: const TextStyle(color: Colors.white70, fontSize: 12),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
+  String _formatDuration(Duration duration) {
+    final hours = duration.inHours.toString().padLeft(2, '0');
+    final minutes = (duration.inMinutes % 60).toString().padLeft(2, '0');
+    final seconds = (duration.inSeconds % 60).toString().padLeft(2, '0');
+    return '$hours:$minutes:$seconds';
   }
 
-  Widget _buildTimeEntry(Map<String, String> entry) {
+  Widget _buildTimeEntry(TimeEntry entry) {
+    final start = entry.clockIn.toLocal();
+    final end = entry.clockOut?.toLocal();
+    final duration = end == null ? null : end.difference(start);
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
@@ -776,11 +711,7 @@ class _TimeTrackingTabState extends State<_TimeTrackingTab> {
               color: AppColors.gold.withOpacity(0.2),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: const Icon(
-              LucideIcons.clock,
-              color: AppColors.gold,
-              size: 16,
-            ),
+            child: const Icon(LucideIcons.clock, color: AppColors.gold, size: 16),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -788,35 +719,35 @@ class _TimeTrackingTabState extends State<_TimeTrackingTab> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  entry['date']!,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w500,
-                  ),
+                  DateFormat('dd.MM.yyyy').format(start),
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
                 ),
                 Text(
-                  '${entry['start']} - ${entry['end']}',
+                  '${DateFormat('HH:mm').format(start)} - ${end == null ? 'offen' : DateFormat('HH:mm').format(end)}',
                   style: const TextStyle(color: Colors.white70, fontSize: 12),
                 ),
               ],
             ),
           ),
           Text(
-            entry['duration']!,
-            style: const TextStyle(
-              color: AppColors.gold,
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
-            ),
+            duration == null ? '--:--' : _formatHoursMinutes(duration),
+            style: const TextStyle(color: AppColors.gold, fontWeight: FontWeight.bold, fontSize: 16),
           ),
         ],
       ),
     );
   }
+
+  String _formatHoursMinutes(Duration duration) {
+    final hours = duration.inHours;
+    final minutes = duration.inMinutes.remainder(60);
+    return '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}';
+  }
 }
 
 // ============================================================================
 // TAB 3: QR CHECK-IN
+
 // ============================================================================
 
 class _QRCheckinTab extends StatefulWidget {
@@ -2025,6 +1956,5 @@ class _ScheduleTabState extends State<_ScheduleTab> {
 // DATA PLACEHOLDERS (empty until backend is connected)
 // ============================================================================
 
-final _appointments = <Map<String, dynamic>>[];
-final _timeEntries = <Map<String, String>>[];
+
 final _leaveRequests = <Map<String, dynamic>>[];
