@@ -10,8 +10,14 @@ final leaveRequestsRepositoryProvider = Provider<LeaveRequestsRepository>((ref) 
   return LeaveRequestsRepository(client);
 });
 
+
 final leaveRequestsProvider = FutureProvider.family<List<LeaveRequest>, TimeTrackingScope>((ref, scope) {
   return ref
       .watch(leaveRequestsRepositoryProvider)
       .listMine(salonId: scope.salonId, staffId: scope.staffId);
+});
+
+/// Provider for all pending leave requests for a salon (manager/owner)
+final pendingLeaveRequestsProvider = FutureProvider.family<List<LeaveRequest>, String>((ref, salonId) {
+  return ref.watch(leaveRequestsRepositoryProvider).listPendingForSalon(salonId);
 });

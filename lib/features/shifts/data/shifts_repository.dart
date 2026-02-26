@@ -3,6 +3,32 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../domain/shift.dart';
 
 class ShiftsRepository {
+      Future<List<Shift>> listShiftsForSalon({
+        required String salonId,
+        required DateTime from,
+        required DateTime to,
+      }) async {
+        final rows = await _client
+            .from('shifts')
+            .select()
+            .eq('salon_id', salonId)
+            .gte('start_at', from.toIso8601String())
+            .lte('start_at', to.toIso8601String())
+            .order('start_at', ascending: true);
+        return (rows as List<dynamic>)
+            .map((row) => Shift.fromJson(row as Map<String, dynamic>))
+            .toList();
+      }
+    Future<void> deleteShift({
+      required String id,
+      required String salonId,
+    }) async {
+      await _client
+          .from('shifts')
+          .delete()
+          .eq('id', id)
+          .eq('salon_id', salonId);
+    }
   ShiftsRepository(this._client);
 
   final SupabaseClient _client;

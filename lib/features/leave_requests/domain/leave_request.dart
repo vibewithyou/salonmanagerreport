@@ -10,6 +10,7 @@ class LeaveRequest {
     this.reason,
     this.decidedBy,
     this.decidedAt,
+    this.managerComment,
   });
 
   final String id;
@@ -22,6 +23,7 @@ class LeaveRequest {
   final String? reason;
   final String? decidedBy;
   final DateTime? decidedAt;
+  final String? managerComment;
 
   factory LeaveRequest.fromJson(Map<String, dynamic> json) {
     return LeaveRequest(
@@ -37,6 +39,7 @@ class LeaveRequest {
       decidedAt: json['decided_at'] == null
           ? null
           : DateTime.parse(json['decided_at'].toString()),
+      managerComment: json['manager_comment'] as String?,
     );
   }
 }

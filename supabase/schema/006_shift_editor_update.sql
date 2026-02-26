@@ -1,0 +1,3 @@
+-- Migration for shift editor update (if needed)
+-- Add/alter columns or policies if shifts table is missing required fields or RLS
+-- This file is a placeholder. No changes needed as of 2026-02-26.
