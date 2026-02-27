@@ -14,7 +14,7 @@ class LoyaltyRepository {
 
   LoyaltyRepository(this._client);
 
-  /// Get loyalty account for customer
+  /// Legacy: Get loyalty account for customer
   Future<LoyaltyAccount?> getCustomerLoyalty({
     required String salonId,
     required String customerId,
@@ -32,6 +32,111 @@ class LoyaltyRepository {
       return LoyaltyAccount.fromJson(data);
     } catch (e) {
       throw Exception('Failed to fetch loyalty account: $e');
+    }
+  }
+
+  /// New model: Get loyalty card for customer/salon
+  Future<LoyaltyCard?> getLoyaltyCard({
+    required String salonId,
+    required String customerId,
+  }) async {
+    try {
+      final data = await _client
+          .from('loyalty_cards')
+          .select()
+          .eq('salon_id', salonId)
+          .eq('customer_id', customerId)
+          .maybeSingle();
+
+      if (data == null) return null;
+      return LoyaltyCard.fromJson(data);
+    } catch (e) {
+      throw Exception('Failed to fetch loyalty card: $e');
+    }
+  }
+
+  Future<List<LoyaltyLevelConfig>> getLoyaltyLevels(String salonId) async {
+    try {
+      final data = await _client
+          .from('loyalty_levels')
+          .select()
+          .eq('salon_id', salonId)
+          .order('threshold_points', ascending: true);
+
+      return (data as List)
+          .map((json) => LoyaltyLevelConfig.fromJson(json))
+          .toList();
+    } catch (e) {
+      throw Exception('Failed to fetch loyalty levels: $e');
+    }
+  }
+
+  Future<LoyaltyLevelConfig> createLoyaltyLevel({
+    required String salonId,
+    required String level,
+    required int thresholdPoints,
+    String? rewardType,
+    double? rewardValue,
+  }) async {
+    try {
+      final data = await _client.from('loyalty_levels').insert({
+        'salon_id': salonId,
+        'level': level,
+        'threshold_points': thresholdPoints,
+        'reward_type': rewardType,
+        'reward_value': rewardValue,
+      }).select().single();
+
+      return LoyaltyLevelConfig.fromJson(data);
+    } catch (e) {
+      throw Exception('Failed to create loyalty level: $e');
+    }
+  }
+
+  Future<void> updateLoyaltyLevel({
+    required String levelId,
+    required String level,
+    required int thresholdPoints,
+    String? rewardType,
+    double? rewardValue,
+  }) async {
+    try {
+      await _client
+          .from('loyalty_levels')
+          .update({
+            'level': level,
+            'threshold_points': thresholdPoints,
+            'reward_type': rewardType,
+            'reward_value': rewardValue,
+          })
+          .eq('id', levelId);
+    } catch (e) {
+      throw Exception('Failed to update loyalty level: $e');
+    }
+  }
+
+  Future<void> deleteLoyaltyLevel(String levelId) async {
+    try {
+      await _client.from('loyalty_levels').delete().eq('id', levelId);
+    } catch (e) {
+      throw Exception('Failed to delete loyalty level: $e');
+    }
+  }
+
+  /// POS/Invoice hook: mark invoice paid and trigger DB loyalty event handling
+  Future<void> markInvoicePaid({
+    required String invoiceId,
+  }) async {
+    try {
+      await _client
+          .from('invoices')
+          .update({
+            'status': 'paid',
+            'paid_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', invoiceId);
+    } catch (e) {
+      throw Exception('Failed to mark invoice as paid: $e');
     }
   }
 
@@ -230,6 +335,64 @@ class LoyaltyRepository {
   }
 }
 
+class LoyaltyCard {
+  final String id;
+  final String salonId;
+  final String customerId;
+  final int points;
+  final int visits;
+  final String level;
+
+  LoyaltyCard({
+    required this.id,
+    required this.salonId,
+    required this.customerId,
+    required this.points,
+    required this.visits,
+    required this.level,
+  });
+
+  factory LoyaltyCard.fromJson(Map<String, dynamic> json) {
+    return LoyaltyCard(
+      id: json['id'] as String,
+      salonId: json['salon_id'] as String? ?? '',
+      customerId: json['customer_id'] as String? ?? '',
+      points: (json['points'] as num?)?.toInt() ?? 0,
+      visits: (json['visits'] as num?)?.toInt() ?? 0,
+      level: json['level'] as String? ?? 'bronze',
+    );
+  }
+}
+
+class LoyaltyLevelConfig {
+  final String id;
+  final String salonId;
+  final String level;
+  final int thresholdPoints;
+  final String? rewardType;
+  final double? rewardValue;
+
+  LoyaltyLevelConfig({
+    required this.id,
+    required this.salonId,
+    required this.level,
+    required this.thresholdPoints,
+    this.rewardType,
+    this.rewardValue,
+  });
+
+  factory LoyaltyLevelConfig.fromJson(Map<String, dynamic> json) {
+    return LoyaltyLevelConfig(
+      id: json['id'] as String,
+      salonId: json['salon_id'] as String? ?? '',
+      level: json['level'] as String? ?? '',
+      thresholdPoints: (json['threshold_points'] as num?)?.toInt() ?? 0,
+      rewardType: json['reward_type'] as String?,
+      rewardValue: (json['reward_value'] as num?)?.toDouble(),
+    );
+  }
+}
+
 /// Loyalty account model
 class LoyaltyAccount {
   final String id;
@@ -255,7 +418,9 @@ class LoyaltyAccount {
       customerId: json['customer_profile_id'] as String? ?? '',
       pointsBalance: (json['points_balance'] as num?)?.toDouble() ?? 0.0,
       tierLevel: json['tier_level'] as String?,
-      createdAt: DateTime.parse(json['created_at'] as String? ?? DateTime.now().toIso8601String()),
+      createdAt: DateTime.parse(
+        json['created_at'] as String? ?? DateTime.now().toIso8601String(),
+      ),
     );
   }
 }
@@ -315,13 +480,19 @@ class Coupon {
       description: json['description'] as String?,
       discountType: json['discount_type'] as String? ?? 'percentage',
       discountValue: (json['discount_value'] as num?)?.toDouble() ?? 0.0,
-      startDate: json['start_date'] != null ? DateTime.parse(json['start_date'] as String) : null,
-      endDate: json['end_date'] != null ? DateTime.parse(json['end_date'] as String) : null,
+      startDate: json['start_date'] != null
+          ? DateTime.parse(json['start_date'] as String)
+          : null,
+      endDate: json['end_date'] != null
+          ? DateTime.parse(json['end_date'] as String)
+          : null,
       minPoints: (json['min_points'] as num?)?.toDouble(),
       targetTags: (json['target_tags'] as List?)?.cast<String>(),
       isActive: json['is_active'] as bool? ?? true,
       createdBy: json['created_by'] as String?,
-      createdAt: DateTime.parse(json['created_at'] as String? ?? DateTime.now().toIso8601String()),
+      createdAt: DateTime.parse(
+        json['created_at'] as String? ?? DateTime.now().toIso8601String(),
+      ),
     );
   }
 }

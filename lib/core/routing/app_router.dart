@@ -35,6 +35,7 @@ import '../../features/salon/presentation/salon_selection_screen.dart';
 import '../../features/salon/presentation/salon_setup_screen.dart';
 import '../../features/calendar/presentation/calendar_screen.dart';
 import '../../features/profile/presentation/profile_screen.dart';
+import '../../features/loyalty/presentation/loyalty_levels_screen.dart';
 import '../../features/employee/presentation/employee_management_screen.dart';
 import '../../features/inventory/presentation/inventory_screen.dart';
 import '../../features/pos/presentation/pos_screen.dart';
@@ -536,10 +537,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/loyalty-settings',
-            builder: (context, state) => const FeatureInProgressScreen(
-              title: 'Treueprogramm',
-              message: 'Die erweiterten Treueprogramm-Einstellungen sind in Arbeit.',
-            ),
+            builder: (context, state) => const LoyaltyLevelsScreen(),
           ),
           GoRoute(
             path: '/coupons',

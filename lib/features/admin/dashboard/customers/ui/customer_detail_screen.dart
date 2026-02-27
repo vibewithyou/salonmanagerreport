@@ -6,6 +6,7 @@ import '../state/customer_providers.dart';
 import 'customer_form_dialog.dart';
 import 'widgets/customer_info_card.dart';
 import 'widgets/customer_appointments_list.dart';
+import 'widgets/customer_loyalty_tab.dart';
 
 class CustomerDetailScreen extends ConsumerWidget {
   final CustomerProfile customer;
@@ -18,10 +19,12 @@ class CustomerDetailScreen extends ConsumerWidget {
       customerAppointmentsProvider(customer.id),
     );
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(customer.fullName),
-        actions: [
+    return DefaultTabController(
+      length: 3,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(customer.fullName),
+          actions: [
           IconButton(
             icon: const Icon(Icons.edit),
             tooltip: 'Bearbeiten',
@@ -56,16 +59,26 @@ class CustomerDetailScreen extends ConsumerWidget {
                   .refresh();
             },
           ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          ],
+          bottom: const TabBar(
+            tabs: [
+              Tab(text: 'Profil'),
+              Tab(text: 'Buchungen'),
+              Tab(text: 'Loyalty'),
+            ],
+          ),
+        ),
+        body: TabBarView(
           children: [
-            // Customer Info Card
-            CustomerInfoCard(customer: customer),
-            const SizedBox(height: 24),
+            SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: CustomerInfoCard(customer: customer),
+            ),
+            SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
 
             // Action Button: Create New Appointment
             Card(
@@ -123,10 +136,10 @@ class CustomerDetailScreen extends ConsumerWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 24),
+                  const SizedBox(height: 24),
 
             // Appointments Section
-            Row(
+                  Row(
               children: [
                 const Icon(Icons.event, size: 20),
                 const SizedBox(width: 8),
@@ -158,8 +171,8 @@ class CustomerDetailScreen extends ConsumerWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 12),
-            appointmentsState.when(
+                  const SizedBox(height: 12),
+                  appointmentsState.when(
               initial: () => const Center(child: CircularProgressIndicator()),
               loading: () => const Center(child: CircularProgressIndicator()),
               loaded: (appointments) {
@@ -231,6 +244,13 @@ class CustomerDetailScreen extends ConsumerWidget {
                   ),
                 ),
               ),
+                  ),
+                ],
+              ),
+            ),
+            SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: CustomerLoyaltyTab(customer: customer),
             ),
           ],
         ),
