@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../pos/data/tax_config_repository.dart';
 import '../../../models/employee_dashboard_dto.dart';
 import '../../../providers/employee_dashboard_provider.dart';
 
@@ -28,6 +29,30 @@ class _POSTabEnhancedState extends ConsumerState<POSTabEnhanced> {
   final List<CartItem> _cartItems = [];
   String _paymentMethod = 'cash'; // cash, card, ec
   double _discountPercent = 0;
+
+  Future<SalonTaxConfig>? _taxConfigFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _taxConfigFuture = _loadTaxConfig();
+  }
+
+  @override
+  void didUpdateWidget(covariant POSTabEnhanced oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.salonId != widget.salonId) {
+      _taxConfigFuture = _loadTaxConfig();
+    }
+  }
+
+  Future<SalonTaxConfig> _loadTaxConfig() {
+    final productIds = _cartItems.map((item) => item.service.id).toList();
+    return ref.read(taxConfigRepositoryProvider).getTaxConfig(
+          widget.salonId,
+          productIds: productIds,
+        );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -201,12 +226,14 @@ class _POSTabEnhancedState extends ConsumerState<POSTabEnhanced> {
       } else {
         _cartItems.add(CartItem(service: service, quantity: 1));
       }
+      _taxConfigFuture = _loadTaxConfig();
     });
   }
 
   void _removeFromCart(int index) {
     setState(() {
       _cartItems.removeAt(index);
+      _taxConfigFuture = _loadTaxConfig();
     });
   }
 
@@ -217,6 +244,7 @@ class _POSTabEnhancedState extends ConsumerState<POSTabEnhanced> {
       } else {
         _cartItems[index].quantity = quantity;
       }
+      _taxConfigFuture = _loadTaxConfig();
     });
   }
 
@@ -228,8 +256,37 @@ class _POSTabEnhancedState extends ConsumerState<POSTabEnhanced> {
     return _calculateSubtotal() * (_discountPercent / 100);
   }
 
-  double _calculateTotal() {
-    return _calculateSubtotal() - _calculateDiscount();
+  double _calculateTotal(SalonTaxConfig taxConfig) {
+    final net = _calculateSubtotal() - _calculateDiscount();
+    return net + _calculateTaxAmount(taxConfig);
+  }
+
+  double _calculateTaxAmount(SalonTaxConfig taxConfig) {
+    if (_cartItems.isEmpty) return 0;
+    final discountFactor =
+        _calculateSubtotal() == 0 ? 1.0 : 1 - (_discountPercent / 100);
+    double tax = 0;
+
+    for (final item in _cartItems) {
+      final net = item.total * discountFactor;
+      tax += net * taxConfig.resolveTaxRate(item.service.id);
+    }
+
+    return tax;
+  }
+
+  Map<double, double> _calculateTaxBreakdown(SalonTaxConfig taxConfig) {
+    final breakdown = <double, double>{};
+    final discountFactor =
+        _calculateSubtotal() == 0 ? 1.0 : 1 - (_discountPercent / 100);
+
+    for (final item in _cartItems) {
+      final rate = taxConfig.resolveTaxRate(item.service.id);
+      final tax = (item.total * discountFactor) * rate;
+      breakdown[rate] = (breakdown[rate] ?? 0) + tax;
+    }
+
+    return breakdown;
   }
 
   Widget _buildCartPanel() {
@@ -310,8 +367,14 @@ class _POSTabEnhancedState extends ConsumerState<POSTabEnhanced> {
               border: Border(top: BorderSide(color: Colors.white10)),
             ),
             padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
+            child: FutureBuilder<SalonTaxConfig>(
+              future: _taxConfigFuture,
+              builder: (context, snapshot) {
+                final taxConfig = snapshot.data ??
+                    const SalonTaxConfig(defaultRate: 0.19, reducedRate: 0.07);
+                final taxBreakdown = _calculateTaxBreakdown(taxConfig);
+                return Column(
+                  children: [
                 // Discount Row
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -391,6 +454,32 @@ class _POSTabEnhancedState extends ConsumerState<POSTabEnhanced> {
                 ],
 
                 const SizedBox(height: 12),
+
+                ...taxBreakdown.entries.map(
+                  (entry) => Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'MwSt. ${(entry.key * 100).toStringAsFixed(0)}%',
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 12,
+                          ),
+                        ),
+                        Text(
+                          '€${entry.value.toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
                 Container(
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   decoration: BoxDecoration(
@@ -411,7 +500,7 @@ class _POSTabEnhancedState extends ConsumerState<POSTabEnhanced> {
                         ),
                       ),
                       Text(
-                        '€${_calculateTotal().toStringAsFixed(2)}',
+                        '€${_calculateTotal(taxConfig).toStringAsFixed(2)}',
                         style: const TextStyle(
                           color: AppColors.gold,
                           fontSize: 18,
@@ -458,7 +547,7 @@ class _POSTabEnhancedState extends ConsumerState<POSTabEnhanced> {
                   child: ElevatedButton.icon(
                     onPressed: _cartItems.isEmpty
                         ? null
-                        : () => _showCheckoutDialog(context),
+                        : () => _showCheckoutDialog(context, taxConfig),
                     icon: const Icon(LucideIcons.checkCircle),
                     label: const Text('Abrechnen'),
                     style: ElevatedButton.styleFrom(
@@ -473,7 +562,9 @@ class _POSTabEnhancedState extends ConsumerState<POSTabEnhanced> {
                     ),
                   ),
                 ),
-              ],
+                  ],
+                );
+              },
             ),
           ),
         ],
@@ -530,7 +621,7 @@ class _POSTabEnhancedState extends ConsumerState<POSTabEnhanced> {
     );
   }
 
-  void _showCheckoutDialog(BuildContext context) {
+  void _showCheckoutDialog(BuildContext context, SalonTaxConfig taxConfig) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -550,7 +641,7 @@ class _POSTabEnhancedState extends ConsumerState<POSTabEnhanced> {
                   style: TextStyle(color: Colors.white70),
                 ),
                 Text(
-                  '€${_calculateTotal().toStringAsFixed(2)}',
+                  '€${_calculateTotal(taxConfig).toStringAsFixed(2)}',
                   style: const TextStyle(
                     color: AppColors.gold,
                     fontWeight: FontWeight.bold,
@@ -594,7 +685,7 @@ class _POSTabEnhancedState extends ConsumerState<POSTabEnhanced> {
           TextButton(
             onPressed: () {
               Navigator.pop(context);
-              _processCheckout();
+              _processCheckout(taxConfig);
             },
             child: const Text(
               'Bestätigen',
@@ -619,7 +710,7 @@ class _POSTabEnhancedState extends ConsumerState<POSTabEnhanced> {
     }
   }
 
-  void _processCheckout() {
+  void _processCheckout(SalonTaxConfig taxConfig) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(
@@ -628,7 +719,7 @@ class _POSTabEnhancedState extends ConsumerState<POSTabEnhanced> {
             const SizedBox(width: 12),
             Expanded(
               child: Text(
-                'Abrechnung erfolgreich!\n€${_calculateTotal().toStringAsFixed(2)} erhalten',
+                'Abrechnung erfolgreich!\n€${_calculateTotal(taxConfig).toStringAsFixed(2)} erhalten',
               ),
             ),
           ],
@@ -643,6 +734,7 @@ class _POSTabEnhancedState extends ConsumerState<POSTabEnhanced> {
       _cartItems.clear();
       _discountPercent = 0;
       _paymentMethod = 'cash';
+      _taxConfigFuture = _loadTaxConfig();
     });
   }
 }
