@@ -1,6 +1,7 @@
 import '../datasources/customer_remote_datasource.dart';
 import '../models/customer_profile.dart';
 import '../models/customer_appointment.dart';
+import '../models/booking_media.dart';
 
 class CustomerRepository {
   final CustomerRemoteDatasource _remoteDatasource;
@@ -60,5 +61,39 @@ class CustomerRepository {
     } catch (e) {
       throw Exception('Failed to load customer appointments: $e');
     }
+  }
+
+  Future<List<BookingMedia>> getBookingMediaForCustomer(String customerId) {
+    return _remoteDatasource.getBookingMediaForCustomer(customerId);
+  }
+
+  Future<List<BookingMedia>> getBookingMediaForAppointment(String appointmentId) {
+    return _remoteDatasource.getBookingMediaForAppointment(appointmentId);
+  }
+
+  Future<void> uploadBookingMedia({
+    required String salonId,
+    required String customerId,
+    required String appointmentId,
+    required String mediaType,
+    required List<int> fileBytes,
+    required String fileName,
+    required String mimeType,
+  }) async {
+    await _remoteDatasource.validateUpload(
+      fileName: fileName,
+      mimeType: mimeType,
+      fileSize: fileBytes.length,
+    );
+
+    await _remoteDatasource.uploadBookingMedia(
+      salonId: salonId,
+      customerId: customerId,
+      appointmentId: appointmentId,
+      mediaType: mediaType,
+      fileBytes: fileBytes,
+      fileName: fileName,
+      mimeType: mimeType,
+    );
   }
 }

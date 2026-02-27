@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../data/models/booking_media.dart';
 import '../data/models/customer_profile.dart';
 import '../state/customer_detail_notifier.dart';
 import '../state/customer_providers.dart';
 import 'customer_form_dialog.dart';
-import 'widgets/customer_info_card.dart';
 import 'widgets/customer_appointments_list.dart';
+import 'widgets/customer_info_card.dart';
 
 class CustomerDetailScreen extends ConsumerWidget {
   final CustomerProfile customer;
@@ -14,227 +15,173 @@ class CustomerDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final appointmentsState = ref.watch(
-      customerAppointmentsProvider(customer.id),
-    );
+    final appointmentsState = ref.watch(customerAppointmentsProvider(customer.id));
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(customer.fullName),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.edit),
-            tooltip: 'Bearbeiten',
-            onPressed: () {
-              showDialog(
-                context: context,
-                builder: (context) => CustomerFormDialog(
-                  salonId: customer.salonId,
-                  existingCustomer: customer,
-                  onSave: (updatedCustomer) async {
-                    await ref
-                        .read(customerRepositoryProvider)
-                        .updateCustomer(customer.id, updatedCustomer.toJson());
-                    if (context.mounted) {
-                      Navigator.pop(context);
-                      // Refresh the detail view
-                      ref
-                          .read(customerAppointmentsProvider(customer.id).notifier)
-                          .refresh();
-                    }
-                  },
-                ),
-              );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Aktualisieren',
-            onPressed: () {
-              ref
-                  .read(customerAppointmentsProvider(customer.id).notifier)
-                  .refresh();
-            },
-          ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Customer Info Card
-            CustomerInfoCard(customer: customer),
-            const SizedBox(height: 24),
-
-            // Action Button: Create New Appointment
-            Card(
-              color: Theme.of(context).primaryColor.withOpacity(0.1),
-              child: InkWell(
-                onTap: () {
-                  // Navigate to appointment creation
-                  // TODO: Implement navigation to appointment creation
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Termin erstellen - Coming soon'),
-                    ),
-                  );
-                },
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.add_circle,
-                        color: Theme.of(context).primaryColor,
-                        size: 32,
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Neuen Termin erstellen',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Theme.of(context).primaryColor,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Erstellen Sie einen neuen Termin für ${customer.firstName}',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey[600],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Icon(
-                        Icons.arrow_forward_ios,
-                        color: Theme.of(context).primaryColor,
-                        size: 16,
-                      ),
-                    ],
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(customer.fullName),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.edit),
+              tooltip: 'Bearbeiten',
+              onPressed: () {
+                showDialog(
+                  context: context,
+                  builder: (context) => CustomerFormDialog(
+                    salonId: customer.salonId,
+                    existingCustomer: customer,
+                    onSave: (updatedCustomer) async {
+                      await ref
+                          .read(customerRepositoryProvider)
+                          .updateCustomer(customer.id, updatedCustomer.toJson());
+                      if (context.mounted) {
+                        Navigator.pop(context);
+                        ref.read(customerAppointmentsProvider(customer.id).notifier).refresh();
+                      }
+                    },
                   ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            // Appointments Section
-            Row(
-              children: [
-                const Icon(Icons.event, size: 20),
-                const SizedBox(width: 8),
-                const Text(
-                  'Vergangene Buchungen',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-                const Spacer(),
-                appointmentsState.maybeWhen(
-                  loaded: (appointments) => Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.blue.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      '${appointments.length} ${appointments.length == 1 ? "Buchung" : "Buchungen"}',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.blue,
-                      ),
-                    ),
-                  ),
-                  orElse: () => const SizedBox.shrink(),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            appointmentsState.when(
-              initial: () => const Center(child: CircularProgressIndicator()),
-              loading: () => const Center(child: CircularProgressIndicator()),
-              loaded: (appointments) {
-                if (appointments.isEmpty) {
-                  return Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(32),
-                      child: Center(
-                        child: Column(
-                          children: [
-                            Icon(
-                              Icons.event_busy,
-                              size: 48,
-                              color: Colors.grey[400],
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              'Keine Buchungen in den letzten 5 Jahren',
-                              style: TextStyle(color: Colors.grey[600]),
-                            ),
-                            const SizedBox(height: 16),
-                            ElevatedButton.icon(
-                              onPressed: () {
-                                // TODO: Navigate to appointment creation
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Termin erstellen - Coming soon'),
-                                  ),
-                                );
-                              },
-                              icon: const Icon(Icons.add),
-                              label: const Text('Ersten Termin erstellen'),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  );
-                }
-                return CustomerAppointmentsList(appointments: appointments);
+                );
               },
-              error: (message) => Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    children: [
-                      const Icon(
-                        Icons.error_outline,
-                        size: 48,
-                        color: Colors.red,
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Fehler beim Laden der Buchungen:\n$message',
-                        style: const TextStyle(color: Colors.red),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 16),
-                      ElevatedButton.icon(
-                        onPressed: () {
-                          ref
-                              .read(customerAppointmentsProvider(customer.id).notifier)
-                              .refresh();
-                        },
-                        icon: const Icon(Icons.refresh),
-                        label: const Text('Erneut versuchen'),
-                      ),
-                    ],
+            ),
+            IconButton(
+              icon: const Icon(Icons.refresh),
+              tooltip: 'Aktualisieren',
+              onPressed: () {
+                ref.read(customerAppointmentsProvider(customer.id).notifier).refresh();
+              },
+            ),
+          ],
+          bottom: const TabBar(
+            tabs: [
+              Tab(text: 'Buchungen', icon: Icon(Icons.event)),
+              Tab(text: 'Bilder', icon: Icon(Icons.photo_library_outlined)),
+            ],
+          ),
+        ),
+        body: TabBarView(
+          children: [
+            SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  CustomerInfoCard(customer: customer),
+                  const SizedBox(height: 24),
+                  appointmentsState.when(
+                    initial: () => const Center(child: CircularProgressIndicator()),
+                    loading: () => const Center(child: CircularProgressIndicator()),
+                    loaded: (appointments) {
+                      if (appointments.isEmpty) {
+                        return const Card(
+                          child: Padding(
+                            padding: EdgeInsets.all(24),
+                            child: Center(
+                              child: Text('Keine Buchungen in den letzten 5 Jahren'),
+                            ),
+                          ),
+                        );
+                      }
+
+                      return CustomerAppointmentsList(
+                        appointments: appointments,
+                        salonId: customer.salonId,
+                        customerId: customer.id,
+                      );
+                    },
+                    error: (message) => Text('Fehler beim Laden der Buchungen: $message'),
                   ),
-                ),
+                ],
               ),
             ),
+            _CustomerBookingMediaTab(customerId: customer.id),
           ],
         ),
       ),
+    );
+  }
+}
+
+class _CustomerBookingMediaTab extends ConsumerWidget {
+  final String customerId;
+
+  const _CustomerBookingMediaTab({required this.customerId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return FutureBuilder<List<BookingMedia>>(
+      future: ref.read(customerRepositoryProvider).getBookingMediaForCustomer(customerId),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (snapshot.hasError) {
+          return Center(child: Text('Fehler beim Laden der Bilder: ${snapshot.error}'));
+        }
+
+        final media = snapshot.data ?? const <BookingMedia>[];
+        if (media.isEmpty) {
+          return const Center(child: Text('Keine Vorher/Nachher Bilder vorhanden'));
+        }
+
+        final grouped = <String, List<BookingMedia>>{};
+        for (final item in media) {
+          grouped.putIfAbsent(item.appointmentId, () => []).add(item);
+        }
+
+        final bookingIds = grouped.keys.toList();
+        return ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: bookingIds.length,
+          itemBuilder: (context, index) {
+            final bookingId = bookingIds[index];
+            final entries = grouped[bookingId] ?? const <BookingMedia>[];
+
+            return Card(
+              margin: const EdgeInsets.only(bottom: 12),
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Buchung: $bookingId', style: const TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: entries
+                          .map(
+                            (media) => SizedBox(
+                              width: 130,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(8),
+                                    child: Image.network(
+                                      media.fileUrl,
+                                      width: 130,
+                                      height: 130,
+                                      fit: BoxFit.cover,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(media.mediaType == 'before' ? 'Vorher' : 'Nachher'),
+                                ],
+                              ),
+                            ),
+                          )
+                          .toList(),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }
