@@ -3,9 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:intl/intl.dart';
 import 'package:qr_flutter/qr_flutter.dart';
-import 'package:http/http.dart' as http;
 import '../../../core/constants/app_colors.dart';
 import '../../../core/auth/identity_provider.dart';
+import '../data/privacy_repository.dart';
 
 /// PHASE 8: SECURITY & DSGVO
 /// 
@@ -47,6 +47,7 @@ class _SecurityPrivacyScreenState extends ConsumerState<SecurityPrivacyScreen>
   bool _analyticsEnabled = false;
   bool _crashReportingEnabled = true;
   bool _marketingEmailsEnabled = false;
+  bool _pushNotificationsEnabled = true;
   
   @override
   void initState() {
@@ -685,7 +686,7 @@ class _SecurityPrivacyScreenState extends ConsumerState<SecurityPrivacyScreen>
           _buildCard([
             SwitchListTile(
               value: _marketingEmailsEnabled,
-              onChanged: (value) => setState(() => _marketingEmailsEnabled = value),
+              onChanged: (value) => _updateConsent(type: 'marketing', granted: value, updateUi: () => _marketingEmailsEnabled = value),
               title: const Text(
                 'Marketing-E-Mails',
                 style: TextStyle(color: Colors.white),
@@ -695,6 +696,21 @@ class _SecurityPrivacyScreenState extends ConsumerState<SecurityPrivacyScreen>
                 style: TextStyle(color: Colors.white70, fontSize: 13),
               ),
               secondary: const Icon(LucideIcons.mail, color: Colors.purple),
+              activeColor: AppColors.gold,
+            ),
+            const Divider(color: Colors.white12),
+            SwitchListTile(
+              value: _pushNotificationsEnabled,
+              onChanged: (value) => _updateConsent(type: 'push', granted: value, updateUi: () => _pushNotificationsEnabled = value),
+              title: const Text(
+                'Push-Benachrichtigungen',
+                style: TextStyle(color: Colors.white),
+              ),
+              subtitle: const Text(
+                'Erinnerungen und wichtige Updates',
+                style: TextStyle(color: Colors.white70, fontSize: 13),
+              ),
+              secondary: const Icon(LucideIcons.bell, color: Colors.cyan),
               activeColor: AppColors.gold,
             ),
           ]),
@@ -1472,6 +1488,42 @@ class _SecurityPrivacyScreenState extends ConsumerState<SecurityPrivacyScreen>
     );
   }
 
+
+  Future<void> _updateConsent({
+    required String type,
+    required bool granted,
+    required void Function() updateUi,
+  }) async {
+    setState(updateUi);
+
+    final userId = ref.read(identityProvider).userId;
+    if (userId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Consent konnte nicht gespeichert werden (kein Nutzer).'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    try {
+      await ref.read(privacyRepositoryProvider).logConsent(
+            userId: userId,
+            type: type,
+            granted: granted,
+          );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Consent-Log fehlgeschlagen: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   void _showDataExportDialog() {
     showDialog(
       context: context,
@@ -1543,32 +1595,25 @@ class _SecurityPrivacyScreenState extends ConsumerState<SecurityPrivacyScreen>
                           exportResult = null;
                         });
                         try {
-                          final identity = ref.read(identityProvider);
-                          final customerProfileId = identity.userId;
-                          if (customerProfileId == null) {
+                          final userId = ref.read(identityProvider).userId;
+                          if (userId == null) {
                             setState(() {
                               error = 'Keine Nutzer-ID gefunden.';
                               loading = false;
                             });
                             return;
                           }
-                          final uri = Uri.parse('https://YOUR_SUPABASE_EDGE_URL/functions/v1/export-customer-data');
-                          final response = await Future.delayed(const Duration(milliseconds: 500), () async {
-                            // TODO: Replace YOUR_SUPABASE_EDGE_URL with real endpoint
-                            return await http.post(
-                              uri,
-                              headers: {'Content-Type': 'application/json'},
-                              body: '{"customer_profile_id": "$customerProfileId"}',
-                            );
-                          });
-                          if (response.statusCode == 200) {
+                          final repo = ref.read(privacyRepositoryProvider);
+                          await repo.createGdprRequest(userId: userId, type: 'export');
+                          final response = await repo.invokeExport();
+                          if (response.status >= 200 && response.status < 300) {
                             setState(() {
-                              exportResult = response.body;
+                              exportResult = response.data.toString();
                               loading = false;
                             });
                           } else {
                             setState(() {
-                              error = 'Backend-Fehler: ${response.statusCode}';
+                              error = 'Backend-Fehler: ${response.status}';
                               loading = false;
                             });
                           }
@@ -1687,8 +1732,7 @@ class _SecurityPrivacyScreenState extends ConsumerState<SecurityPrivacyScreen>
                           error = null;
                         });
                         try {
-                          final identity = ref.read(identityProvider);
-                          final userId = identity.userId;
+                          final userId = ref.read(identityProvider).userId;
                           if (userId == null) {
                             setState(() {
                               error = 'Keine Nutzer-ID gefunden.';
@@ -1696,23 +1740,17 @@ class _SecurityPrivacyScreenState extends ConsumerState<SecurityPrivacyScreen>
                             });
                             return;
                           }
-                          final uri = Uri.parse('https://YOUR_SUPABASE_EDGE_URL/functions/v1/delete-customer-data');
-                          final response = await Future.delayed(const Duration(milliseconds: 500), () async {
-                            // TODO: Replace YOUR_SUPABASE_EDGE_URL with real endpoint
-                            return await http.post(
-                              uri,
-                              headers: {'Content-Type': 'application/json'},
-                              body: '{"user_id": "$userId"}',
-                            );
-                          });
-                          if (response.statusCode == 200) {
+                          final repo = ref.read(privacyRepositoryProvider);
+                          await repo.createGdprRequest(userId: userId, type: 'delete');
+                          final response = await repo.invokeDelete();
+                          if (response.status >= 200 && response.status < 300) {
                             setState(() {
                               success = true;
                               loading = false;
                             });
                           } else {
                             setState(() {
-                              error = 'Backend-Fehler: ${response.statusCode}';
+                              error = 'Backend-Fehler: ${response.status}';
                               loading = false;
                             });
                           }
@@ -1764,7 +1802,7 @@ class _SecurityPrivacyScreenState extends ConsumerState<SecurityPrivacyScreen>
             ),
             SwitchListTile(
               value: _marketingEmailsEnabled,
-              onChanged: (value) => setState(() => _marketingEmailsEnabled = value),
+              onChanged: (value) => _updateConsent(type: 'marketing', granted: value, updateUi: () => _marketingEmailsEnabled = value),
               title: const Text('Marketing-Cookies', style: TextStyle(color: Colors.white)),
               subtitle: const Text('Personalisierte Werbung', style: TextStyle(color: Colors.white70, fontSize: 12)),
               activeColor: AppColors.gold,
