@@ -1,6 +1,9 @@
+import 'dart:typed_data';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/customer_profile.dart';
 import '../models/customer_appointment.dart';
+import '../models/booking_media.dart';
 
 class CustomerRemoteDatasource {
   final SupabaseClient _supabase;
@@ -101,6 +104,87 @@ class CustomerRemoteDatasource {
           (json) => CustomerAppointment.fromJson(json as Map<String, dynamic>),
         )
         .toList();
+  }
+
+  Future<List<BookingMedia>> getBookingMediaForCustomer(String customerId) async {
+    final response = await _supabase
+        .from('booking_media')
+        .select(
+          'id, appointment_id, customer_profile_id, salon_id, media_type, file_url, file_path, mime_type, file_size, created_at',
+        )
+        .eq('customer_profile_id', customerId)
+        .order('created_at', ascending: false);
+
+    return (response as List)
+        .map((json) => BookingMedia.fromJson(json as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<List<BookingMedia>> getBookingMediaForAppointment(
+    String appointmentId,
+  ) async {
+    final response = await _supabase
+        .from('booking_media')
+        .select(
+          'id, appointment_id, customer_profile_id, salon_id, media_type, file_url, file_path, mime_type, file_size, created_at',
+        )
+        .eq('appointment_id', appointmentId)
+        .order('created_at', ascending: false);
+
+    return (response as List)
+        .map((json) => BookingMedia.fromJson(json as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<void> validateUpload({
+    required String fileName,
+    required String mimeType,
+    required int fileSize,
+  }) async {
+    final response = await _supabase.functions.invoke(
+      'validate-upload',
+      body: {'fileName': fileName, 'mimeType': mimeType, 'fileSize': fileSize},
+    );
+
+    if (response.status < 200 || response.status >= 300) {
+      throw Exception('Datei-Validierung fehlgeschlagen');
+    }
+  }
+
+  Future<void> uploadBookingMedia({
+    required String salonId,
+    required String customerId,
+    required String appointmentId,
+    required String mediaType,
+    required List<int> fileBytes,
+    required String fileName,
+    required String mimeType,
+  }) async {
+    final extension = fileName.contains('.') ? fileName.split('.').last : 'jpg';
+    final path =
+        '$salonId/$customerId/$appointmentId/$mediaType-${DateTime.now().millisecondsSinceEpoch}.$extension';
+
+    await _supabase.storage
+        .from('booking_media')
+        .uploadBinary(
+          path,
+          Uint8List.fromList(fileBytes),
+          fileOptions: FileOptions(contentType: mimeType, upsert: false),
+        );
+
+    final publicUrl = _supabase.storage.from('booking_media').getPublicUrl(path);
+
+    await _supabase.from('booking_media').insert({
+      'appointment_id': appointmentId,
+      'customer_profile_id': customerId,
+      'salon_id': salonId,
+      'media_type': mediaType,
+      'file_url': publicUrl,
+      'file_path': path,
+      'mime_type': mimeType,
+      'file_size': fileBytes.length,
+      'created_by': _supabase.auth.currentUser?.id,
+    });
   }
 
   /// Generate customer number: prefix + YYYYMMDD + sequence
